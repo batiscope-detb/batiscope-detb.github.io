@@ -409,3 +409,15 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 .ech-proche { background: var(--ambre-pale); color: var(--ambre); }
 .ech-ok { background: var(--vert-pale); color: var(--vert); }
 .ech-inconnue { background: rgba(127,127,160,.15); color: var(--encre-2); }
+
+/* Listes de référence (paramètres) */
+.listes-deux { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 760px) { .listes-deux { grid-template-columns: 1fr; } }
+.listes-deux h3 { margin: 0 0 6px; font-size: 14px; }
+.liste-ref { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 46vh; overflow: auto; }
+.liste-ref li { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; border: 1px solid transparent; }
+.liste-ref li .champ { flex: 1; }
+.liste-ref li small { color: var(--encre-2); white-space: nowrap; font-size: 11px; }
+.liste-ref li.choisi { border-color: var(--violet); background: var(--pale); }
+.liste-ref li.archive .champ { opacity: .55; text-decoration: line-through; }
+.fleches { display: inline-flex; gap: 2px; }

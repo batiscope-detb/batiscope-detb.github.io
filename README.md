@@ -14,6 +14,16 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.6 (cycle de vie, registre, vérifications, listes)
+- Archivage d'un bâtiment (fiche → Synthèse) : archive .zip (données et fichiers) avec empreinte SHA-256 à déposer sur OneDrive,
+  libération de l'espace serveur par un administrateur après vérification de l'archive, réouverture depuis l'archive.
+- Registre public d'accessibilité (arrêté du 19 avril 2017) : saisie des informations de l'établissement, niveau d'accessibilité
+  et dérogations tirés du diagnostic, propositions de maintenance selon les équipements relevés, version imprimable avec la liste des pièces.
+- Vérifications périodiques sur la fiche ERP : catalogue des contrôles courants, échéance calculée (dernière + périodicité),
+  alertes « en retard » et « à prévoir sous 60 jours » au tableau de bord.
+- Paramètres → Listes (administrateurs) : corps d'état, points de contrôle et types de locaux — renommer, ordonner, archiver, supprimer
+  si inutilisé ; transmis aux tablettes à la synchronisation.
+
 ## Version 0.5 (rapports, notice d'accessibilité, veille réglementaire)
 - Rapports imprimables A4 (bouton « Imprimer / enregistrer en PDF ») depuis la synthèse de la fiche :
   relevé d'état (synthèse, travaux par corps d'état, plans annotés, constats avec photos, récapitulatif) et
