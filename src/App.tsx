@@ -9,6 +9,7 @@ import TableauDeBord from './pages/TableauDeBord'
 import FicheErp from './pages/FicheErp'
 import Referentiel from './pages/Referentiel'
 import { Notifications } from './composants/Ui'
+import { FormulaireMotDePasse, Parametres, type Moi } from './composants/Parametres'
 
 interface Donnees { patrimoine: Patrimoine; indicateurs: IndicateursErp[]; chargeLe: Date }
 interface Ctx { donnees: Donnees | null; erreur: string | null; recharger: () => void; nomAgent: string; modifier: (f: (p: Patrimoine) => Patrimoine) => void }
@@ -20,6 +21,8 @@ export default function App() {
   const [donnees, setDonnees] = useState<Donnees | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
   const [nomAgent, setNomAgent] = useState('')
+  const [profil, setProfil] = useState<{ role: string; actif: boolean } | null | undefined>(undefined)
+  const [parametres, setParametres] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -39,25 +42,50 @@ export default function App() {
     setDonnees((d) => { if (!d) return d; const p = f(d.patrimoine); return { ...d, patrimoine: p, indicateurs: indicateurs(p) } })
   }, [])
 
+  const provisoire = !!session?.user.user_metadata?.mdp_provisoire
+
   useEffect(() => {
-    if (!session) { setDonnees(null); return }
-    recharger()
-    supabase.schema('releves').from('agent').select('id,nom').then(({ data }) => definirNomsAgents(new Map((data ?? []).map((a) => [a.id as string, a.nom as string]))))
-    supabase.schema('releves').from('agent').select('nom').eq('id', session.user.id).maybeSingle()
-      .then(({ data }) => setNomAgent((data?.nom as string | undefined) ?? session.user.email ?? ''))
-  }, [session?.user.id, recharger]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!session) { setDonnees(null); setProfil(undefined); return }
+    supabase.schema('releves').from('agent').select('nom,role,actif').eq('id', session.user.id).maybeSingle()
+      .then(({ data }) => {
+        setNomAgent((data?.nom as string | undefined) ?? session.user.email ?? '')
+        setProfil(data ? { role: data.role as string, actif: !!data.actif } : null)
+        if (data?.actif && !provisoire) {
+          recharger()
+          supabase.schema('releves').from('agent').select('id,nom').then(({ data: d }) => definirNomsAgents(new Map((d ?? []).map((a) => [a.id as string, a.nom as string]))))
+        }
+      })
+  }, [session?.user.id, provisoire, recharger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (session === undefined) return <div className="chargement"><span className="roue" />Chargement…</div>
   if (!session) return <Connexion />
+  if (profil === undefined) return <div className="chargement"><span className="roue" />Chargement…</div>
+  if (!profil?.actif) return (
+    <div className="premiere-connexion"><div>
+      <h1 style={{ fontSize: 20 }}>Compte non activé</h1>
+      <p>Votre compte ({session.user.email}) n'a pas accès aux relevés. Demandez à un administrateur de la DETB de l'activer.</p>
+      <div><button className="bouton" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div>
+    </div></div>
+  )
+  if (provisoire) return (
+    <div className="premiere-connexion"><div>
+      <h1 style={{ fontSize: 20 }}>Bienvenue {nomAgent}</h1>
+      <p>Vous vous connectez avec un mot de passe provisoire. Choisissez maintenant votre mot de passe personnel : il servira aussi sur la tablette.</p>
+      <FormulaireMotDePasse titre="Mon mot de passe" apres={() => supabase.auth.refreshSession()} />
+      <div><button className="bouton" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div>
+      <Notifications />
+    </div></div>
+  )
+  const moi: Moi = { id: session.user.id, nom: nomAgent, email: session.user.email ?? '', role: profil.role }
 
   const initiales = nomAgent.split(/[\s.@]+/).filter(Boolean).slice(0, 2).map((m) => m[0]?.toUpperCase()).join('')
   return (
     <ContexteDonnees.Provider value={{ donnees, erreur, recharger, nomAgent, modifier }}>
       <header className="entete">
-        <Link to="/" className="marque">
+        <button type="button" className="marque-bouton" onClick={() => setParametres(true)} title="Paramètres : compte, apparence, utilisateurs">
           <img src={`${import.meta.env.BASE_URL}embleme.png`} alt="" />
           <span><b>Relevés DETB</b><small>Ville de Cherbourg-en-Cotentin</small></span>
-        </Link>
+        </button>
         <nav className="nav" aria-label="Navigation principale">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'actif' : '')}>Tableau de bord</NavLink>
           <NavLink to="/referentiel" className={({ isActive }) => (isActive ? 'actif' : '')}>Référentiel accessibilité</NavLink>
@@ -65,8 +93,7 @@ export default function App() {
         <div className="compte">
           {donnees && <span title="Heure du dernier chargement">À jour à {donnees.chargeLe.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
           <button className="lien-clair" onClick={recharger} title="Recharger les données du serveur">Actualiser</button>
-          <span className="pastille" title={nomAgent}>{initiales || '?'}</span>
-          <button className="lien-clair" onClick={() => supabase.auth.signOut()}>Déconnexion</button>
+          <button type="button" className="pastille" style={{ border: 'none', color: '#fff', cursor: 'pointer' }} title={`${nomAgent} — paramètres`} onClick={() => setParametres(true)}>{initiales || '?'}</button>
         </div>
       </header>
       {erreur && <main className="page"><p className="erreur">Impossible de charger les données : {erreur}</p></main>}
@@ -80,7 +107,8 @@ export default function App() {
         </Routes>
       )}
       <Notifications />
-      <footer className="pied">Direction de l'entretien et des travaux du bâtiment — appli bureau v{__VERSION__}</footer>
+      <Parametres ouvert={parametres} fermer={() => setParametres(false)} moi={moi} renommer={setNomAgent} />
+      <footer className="pied">Direction Études et Travaux Bâtiments — appli bureau v{__VERSION__}</footer>
     </ContexteDonnees.Provider>
   )
 }

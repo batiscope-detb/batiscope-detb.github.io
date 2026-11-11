@@ -18,7 +18,7 @@ export default function Connexion() {
   return (
     <div className="connexion">
       <form onSubmit={valider}>
-        <img src={`${import.meta.env.BASE_URL}logo-detb.png`} alt="Direction de l'entretien et des travaux du bâtiment" />
+        <img src={`${import.meta.env.BASE_URL}logo-detb.png`} alt="Direction Études et Travaux Bâtiments" />
         <h1 style={{ textAlign: 'center', fontSize: 20 }}>Relevés DETB — bureau</h1>
         <p className="sous-titre" style={{ textAlign: 'center', marginTop: -6 }}>Même compte que sur la tablette</p>
         <label>Adresse électronique

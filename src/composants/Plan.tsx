@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as PE } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as PE, type ReactNode } from 'react'
 import * as pdfjs from 'pdfjs-dist'
 import urlTravailleur from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -15,15 +15,20 @@ interface Props {
   surChoix?: (id: string) => void
   selection?: string | null
   viseur?: boolean
+  /** Calque dessiné au-dessus du plan (ratio = hauteur / largeur de la page). */
+  superposition?: (ratio: number) => ReactNode
+  /** Plan rendu (pour l'export en image). */
+  surRendu?: (c: HTMLCanvasElement) => void
 }
 
 const borne = (v: number) => Math.min(1, Math.max(0, v))
 
 /** Affiche une page de plan PDF et superpose les repères (coordonnées relatives à la page, comme sur la tablette). */
-export function Plan({ url, page, reperes, surClic, surDeplacement, surChoix, selection, viseur }: Props) {
+export function Plan({ url, page, reperes, surClic, surDeplacement, surChoix, selection, viseur, superposition, surRendu }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const cadre = useRef<HTMLDivElement>(null)
   const [etat, setEtat] = useState<'chargement' | 'ok' | 'erreur'>('chargement')
+  const [ratio, setRatio] = useState(1)
   const [glisse, setGlisse] = useState<{ id: string; x: number; y: number; depart: [number, number]; bouge: boolean } | null>(null)
 
   useEffect(() => {
@@ -41,7 +46,7 @@ export function Plan({ url, page, reperes, surClic, surDeplacement, surChoix, se
       c.width = vue.width; c.height = vue.height
       tache = p.render({ canvasContext: c.getContext('2d')!, viewport: vue })
       await tache.promise
-      if (!annule) setEtat('ok')
+      if (!annule) { setRatio(vue.height / vue.width); setEtat('ok'); surRendu?.(c) }
     }).catch(() => { if (!annule) setEtat('erreur') })
     return () => { annule = true; tache?.cancel(); doc.destroy() }
   }, [url, page])
@@ -77,6 +82,7 @@ export function Plan({ url, page, reperes, surClic, surDeplacement, surChoix, se
       <div ref={cadre} className={`plan${viseur ? ' viseur' : ''}`} style={{ display: etat === 'ok' ? 'inline-block' : 'none' }}
         onClick={(e) => surClic && etat === 'ok' && surClic(...relatif(e))}>
         <canvas ref={canvas} />
+        {etat === 'ok' && superposition?.(ratio)}
         {reperes.map((r) => {
           const g = glisse?.id === r.id ? glisse : null
           return (

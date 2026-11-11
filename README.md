@@ -1,7 +1,7 @@
 # Relevés DETB — appli bureau
 
 Application web (installable, sans droits administrateur) de consultation et de pilotage du patrimoine bâti
-de la Direction de l'entretien et des travaux du bâtiment, Ville de Cherbourg-en-Cotentin.
+de la Direction Études et Travaux Bâtiments, Ville de Cherbourg-en-Cotentin.
 
 Elle lit les mêmes données que l'appli tablette « Relevés DETB » (base Supabase) : relevés d'état des bâtiments
 et diagnostics d'accessibilité Ad'AP. Les statuts d'accessibilité sont recalculés avec le même moteur et le même
@@ -13,6 +13,17 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
 - Le code est public ; les données ne le sont pas : chaque lecture exige la connexion d'un agent actif
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
+
+## Version 0.3 (paramètres, comptes, annotations de plan)
+- **Logo en haut à gauche → Paramètres** : mon compte (nom affiché, mot de passe), apparence (thème clair/sombre,
+  taille du texte, mode modification par défaut), **utilisateurs** pour les administrateurs (créer un agent avec un mot
+  de passe provisoire à changer à la première connexion, rôle, activer/désactiver, nouveau mot de passe), à propos.
+  Les opérations sur les comptes passent par la fonction serveur `gerer-agents` (`supabase/functions`), seule à détenir
+  la clé secrète. Un compte créé autrement (inscription spontanée) n'a aucun accès tant qu'un administrateur ne l'a pas activé.
+- **Plans et repères** : 42 symboles (évacuation, sécurité incendie, accessibilité, relevé et désordres) et 6 outils
+  (texte, flèche, cote, zone, tracé libre, nuage), avec valeur (UP et largeur calculée, pente, degré coupe-feu…),
+  orientation, taille, couleur, rattachement à un local ou un élément, calques, légende automatique et export du plan
+  annoté en image. Table `releves.annotation`, synchronisable (affichage sur la tablette dans une prochaine version).
 
 ## Version 0.2 (préparation et correction des relevés)
 Avec le « Mode modification » (interrupteur en haut de chaque fiche) :
