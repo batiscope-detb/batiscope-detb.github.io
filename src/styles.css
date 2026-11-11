@@ -421,3 +421,17 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 .liste-ref li.choisi { border-color: var(--violet); background: var(--pale); }
 .liste-ref li.archive .champ { opacity: .55; text-decoration: line-through; }
 .fleches { display: inline-flex; gap: 2px; }
+
+/* Tableau réglementaire de la notice */
+.article-notice { border: 1px solid var(--ligne, #ddd); border-radius: 8px; margin: 8px 0; padding: 0 10px; }
+.article-notice > summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: var(--encre); }
+.article-so { margin: 4px 0; font-size: 13px; color: var(--encre-2); }
+.tableau-notice td { vertical-align: top; }
+.tableau-notice td:first-child { width: 46%; font-size: 13px; }
+.tableau-notice textarea { width: 100%; min-height: 34px; resize: vertical; font-size: 13px; }
+.tableau-notice tr.a-completer textarea { border-color: var(--ambre); background: var(--ambre-pale); }
+.sous-titre-notice td { background: var(--pale); font-weight: 600; font-size: 13px; }
+.tab-notice { margin-bottom: 14px; page-break-inside: auto; }
+.tab-notice tr { page-break-inside: avoid; }
+.tab-notice .titre-article th { background: #2E2A5B; color: #fff; text-align: left; }
+.tab-notice .sous-titre-notice td { background: #EEECF6; }

@@ -14,6 +14,12 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.7 (notice au modèle DETB, exports Word)
+- Notice d'accessibilité : tableau des dispositions réglementaires (articles 2 à 19, lignes du modèle DETB),
+  colonne « Dispositions prévues » remplie automatiquement depuis le diagnostic (conforme, non conforme avec travaux
+  ou dérogation, sans objet), retouchable ligne par ligne ; lignes à compléter signalées.
+- Export Word (.docx) de tous les documents (relevé, diagnostic, notice, registre) depuis l'aperçu, pour l'ajustement final avant envoi.
+
 ## Version 0.6 (cycle de vie, registre, vérifications, listes)
 - Archivage d'un bâtiment (fiche → Synthèse) : archive .zip (données et fichiers) avec empreinte SHA-256 à déposer sur OneDrive,
   libération de l'espace serveur par un administrateur après vérification de l'archive, réouverture depuis l'archive.

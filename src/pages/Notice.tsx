@@ -7,6 +7,7 @@ import { ecrire, supprimer } from '../ecriture'
 import { nouvelId } from '../ids'
 import { genererNotice, introduction, RUBRIQUES } from '../notice'
 import { Champ, executer, signaler } from '../composants/Ui'
+import NoticeTableau from './NoticeTableau'
 
 interface Entete { diagnostic_id: string; activite: string | null; numero_dossier: string | null; parties_ouvertes: string | null; description_travaux: string | null; maitre_ouvrage: string | null; maitre_oeuvre: string | null; date_notice: string | null; maj_le?: string }
 interface Paragraphe { id: string; rubrique: string; element_id: string | null; regle_id: string | null; ordre: number; texte_auto: string | null; texte_modifie: string | null; genere_le: string | null; maj_le?: string }
@@ -153,6 +154,7 @@ export default function Notice() {
           </section>
         )
       })}
+      <NoticeTableau ind={ind} derogations={derogations} edition={edition} />
     </main>
   )
 }

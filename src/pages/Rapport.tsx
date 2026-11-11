@@ -10,7 +10,10 @@ import { travauxParLot } from '../calculs'
 import { exigences, libelleMesure, libelleSeuil, LIBELLE_STATUT, taux, VERSION_REFERENTIEL, type Statut } from '../moteur'
 import { genererNotice, introduction, RUBRIQUES } from '../notice'
 import { useDonnees } from '../App'
+import { signaler } from '../composants/Ui'
 import { chargerRegistre, niveauAccessibilite, type Registre } from '../registre'
+import { articleSansObjet, calculerTableau } from '../noticeTableau'
+import { chargerRetouches } from './NoticeTableau'
 
 type Genre = 'releve' | 'accessibilite' | 'notice' | 'registre'
 const TITRES: Record<Genre, string> = {
@@ -33,6 +36,7 @@ export default function Rapport() {
   const d = useDossier(id, genre === 'notice' || genre === 'registre' ? null : genre === 'releve' ? 'releves' : 'accessibilite')
   const { nomAgent } = useDonnees()
   const [photosChargees, setPhotosChargees] = useState(false)
+  const [word, setWord] = useState(false)
 
   useEffect(() => {
     if (!d.pret) return
@@ -51,6 +55,12 @@ export default function Rapport() {
       <div className="barre-rapport">
         <Link to={`/erp/${pr.id}`}>← Retour à la fiche</Link>
         <span>{TITRES[genre]} — {pr.nom}</span>
+        <button className="bouton" disabled={!d.pret || word} onClick={async () => {
+          const art = document.querySelector<HTMLElement>('.rapport')
+          if (!art) return
+          setWord(true)
+          try { const { exporterWord } = await import('../exportWord'); await exporterWord(art, `${TITRES[genre]} - ${pr.nom}`, TITRES[genre]) } catch (e) { signaler(`Export Word impossible : ${e instanceof Error ? e.message : e}`, 'erreur') } finally { setWord(false) }
+        }}>{word ? 'Export Word…' : 'Exporter en Word (.docx)'}</button>
         <button className="bouton primaire" disabled={!d.pret} onClick={() => window.print()}>
           {!d.pret ? 'Préparation…' : photosChargees ? 'Imprimer / enregistrer en PDF' : 'Imprimer (photos en cours de chargement)'}
         </button>
@@ -324,15 +334,18 @@ function CorpsNotice({ d }: { d: Dossier }) {
   const diag = d.ind!.diagnostic
   const [entete, setEntete] = useState<Entete | null>(null)
   const [paras, setParas] = useState<Paragraphe[] | null>(null)
+  const [retouches, setRetouches] = useState<Map<string, string | null> | null>(null)
   useEffect(() => {
     if (!diag) return
+    chargerRetouches(diag.id).then(setRetouches).catch(() => setRetouches(new Map()))
     Promise.all([
       supabase.schema('accessibilite').from('notice_entete').select('*').eq('diagnostic_id', diag.id).is('supprime_le', null).maybeSingle(),
       supabase.schema('accessibilite').from('notice_paragraphe').select('id,rubrique,element_id,ordre,texte_auto,texte_modifie').eq('diagnostic_id', diag.id).is('supprime_le', null),
     ]).then(([e, p]) => { setEntete((e.data as Entete | null) ?? null); setParas((p.data as Paragraphe[] | null) ?? []) })
   }, [diag?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!diag) return <Section titre="Notice">Pas de diagnostic d'accessibilité : la notice ne peut pas être établie.</Section>
-  if (!paras) return <div className="chargement"><span className="roue" />Chargement de la notice…</div>
+  if (!paras || !retouches) return <div className="chargement"><span className="roue" />Chargement de la notice…</div>
+  const tableau = calculerTableau(d.ind!.elements, d.derogations, retouches)
   // Notice enregistrée si elle existe, sinon texte généré à la volée depuis le diagnostic.
   const liste: Paragraphe[] = paras.length ? paras : genererNotice(d.ind!.elements, d.derogations).map((x, i) => ({ id: String(i), ...x, texte_modifie: null }))
   return (
@@ -366,6 +379,23 @@ function CorpsNotice({ d }: { d: Dossier }) {
           <ul>{d.derogations.map((x) => <li key={x.id}><b>{x.regle_id}</b> — {MOTIFS[x.motif] ?? x.motif} : {x.objet}{x.mesures_substitution ? ` Mesures de substitution : ${x.mesures_substitution}` : ''}</li>)}</ul>
         </Section>
       )}
+      <Section titre="Tableau des dispositions réglementaires" saut>
+        {tableau.map((a) => articleSansObjet(a.lignes)
+          ? <p key={a.article} className="remarque">Article {a.article} — {a.titre} : sans objet.</p>
+          : (
+            <table key={a.article} className="tab-rapport tab-notice">
+              <thead>
+                <tr className="titre-article"><th colSpan={2}>ARTICLE {a.article} — {a.titre}</th></tr>
+                <tr><th style={{ width: '48%' }}>Dispositions réglementaires</th><th>Dispositions prévues et / ou descriptif des travaux envisagés</th></tr>
+              </thead>
+              <tbody>
+                {a.lignes.map((x, i) => x.s
+                  ? <tr key={`s${i}`} className="sous-titre-notice"><td colSpan={2}><b>{x.s}</b></td></tr>
+                  : <tr key={x.calc!.id}><td>{x.l}</td><td>{x.calc!.texte.split('\n').map((t, k) => <span key={k}>{k > 0 && <br />}{t}</span>)}</td></tr>)}
+              </tbody>
+            </table>
+          ))}
+      </Section>
       <p className="signature">Fait à Cherbourg-en-Cotentin, le {entete?.date_notice ? date(entete.date_notice) : new Date().toLocaleDateString('fr-FR')}<br /><br />Le maître d'ouvrage</p>
     </>
   )
