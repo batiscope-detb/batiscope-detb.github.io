@@ -4,6 +4,7 @@ import { useDonnees } from '../App'
 import { LIBELLE_STATUT_ERP, euros, date, octets } from '../donnees'
 import { alertes, travauxParLot, type StatutAffiche, type IndicateursErp } from '../calculs'
 import { BarreConformite } from '../composants/Barres'
+import { DialogueProjet } from './fiche/DialogueProjet'
 
 const ORDRE_STATUTS: StatutAffiche[] = ['a_diagnostiquer', 'diagnostic', 'programme', 'travaux', 'atteste', 'archive']
 const COULEUR_STATUT: Record<StatutAffiche, string> = {
@@ -21,6 +22,7 @@ export default function TableauDeBord() {
   const [typeErp, setTypeErp] = useState('')
   const [tri, setTri] = useState<{ col: Tri; desc: boolean }>({ col: 'nom', desc: false })
   const [exportEnCours, setExportEnCours] = useState(false)
+  const [creation, setCreation] = useState(false)
 
   const ind = donnees!.indicateurs
   const p = donnees!.patrimoine
@@ -80,9 +82,12 @@ export default function TableauDeBord() {
           <h1>Patrimoine bâti — accessibilité et état des bâtiments</h1>
           <p className="sous-titre">{ind.length} bâtiment{ind.length > 1 ? 's' : ''} suivi{ind.length > 1 ? 's' : ''}{filtres.length !== ind.length ? ` — ${filtres.length} affiché${filtres.length > 1 ? 's' : ''}` : ''}</p>
         </div>
-        <button className="bouton primaire" onClick={exporter} disabled={exportEnCours || !filtres.length}>
-          {exportEnCours ? 'Préparation…' : 'Exporter vers Excel'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="bouton" onClick={exporter} disabled={exportEnCours || !filtres.length}>
+            {exportEnCours ? 'Préparation…' : 'Exporter vers Excel'}
+          </button>
+          <button className="bouton primaire" onClick={() => setCreation(true)}>+ Nouveau bâtiment</button>
+        </div>
       </div>
 
       <div className="filtres">
@@ -187,6 +192,7 @@ export default function TableauDeBord() {
           </section>
         </div>
       </div>
+      <DialogueProjet ouvert={creation} fermer={() => setCreation(false)} />
     </main>
   )
 }

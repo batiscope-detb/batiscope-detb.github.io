@@ -2,15 +2,17 @@ import { useCallback, useEffect, useState, createContext, useContext } from 'rea
 import { NavLink, Route, Routes, Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, chargerPatrimoine, type Patrimoine } from './donnees'
+import { definirNomsAgents } from './ecriture'
 import { indicateurs, type IndicateursErp } from './calculs'
 import Connexion from './pages/Connexion'
 import TableauDeBord from './pages/TableauDeBord'
 import FicheErp from './pages/FicheErp'
 import Referentiel from './pages/Referentiel'
+import { Notifications } from './composants/Ui'
 
 interface Donnees { patrimoine: Patrimoine; indicateurs: IndicateursErp[]; chargeLe: Date }
-interface Ctx { donnees: Donnees | null; erreur: string | null; recharger: () => void; nomAgent: string }
-const ContexteDonnees = createContext<Ctx>({ donnees: null, erreur: null, recharger: () => {}, nomAgent: '' })
+interface Ctx { donnees: Donnees | null; erreur: string | null; recharger: () => void; nomAgent: string; modifier: (f: (p: Patrimoine) => Patrimoine) => void }
+const ContexteDonnees = createContext<Ctx>({ donnees: null, erreur: null, recharger: () => {}, nomAgent: '', modifier: () => {} })
 export const useDonnees = () => useContext(ContexteDonnees)
 
 export default function App() {
@@ -32,9 +34,15 @@ export default function App() {
       .catch((e: Error) => setErreur(e.message))
   }, [])
 
+  /** Applique en mémoire le résultat d'une écriture (sans tout recharger). */
+  const modifier = useCallback((f: (p: Patrimoine) => Patrimoine) => {
+    setDonnees((d) => { if (!d) return d; const p = f(d.patrimoine); return { ...d, patrimoine: p, indicateurs: indicateurs(p) } })
+  }, [])
+
   useEffect(() => {
     if (!session) { setDonnees(null); return }
     recharger()
+    supabase.schema('releves').from('agent').select('id,nom').then(({ data }) => definirNomsAgents(new Map((data ?? []).map((a) => [a.id as string, a.nom as string]))))
     supabase.schema('releves').from('agent').select('nom').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => setNomAgent((data?.nom as string | undefined) ?? session.user.email ?? ''))
   }, [session?.user.id, recharger]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -44,7 +52,7 @@ export default function App() {
 
   const initiales = nomAgent.split(/[\s.@]+/).filter(Boolean).slice(0, 2).map((m) => m[0]?.toUpperCase()).join('')
   return (
-    <ContexteDonnees.Provider value={{ donnees, erreur, recharger, nomAgent }}>
+    <ContexteDonnees.Provider value={{ donnees, erreur, recharger, nomAgent, modifier }}>
       <header className="entete">
         <Link to="/" className="marque">
           <img src={`${import.meta.env.BASE_URL}embleme.png`} alt="" />
@@ -71,6 +79,7 @@ export default function App() {
           <Route path="*" element={<main className="page"><p>Page introuvable. <Link to="/">Retour au tableau de bord</Link></p></main>} />
         </Routes>
       )}
+      <Notifications />
       <footer className="pied">Direction de l'entretien et des travaux du bâtiment — appli bureau v{__VERSION__}</footer>
     </ContexteDonnees.Provider>
   )

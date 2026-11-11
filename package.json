@@ -1,7 +1,7 @@
 {
   "name": "releve-detb-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Relevés DETB — appli bureau (consultation et pilotage du patrimoine bâti), Ville de Cherbourg-en-Cotentin",
   "scripts": {
@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
     "exceljs": "^4.4.0",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.3.31",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

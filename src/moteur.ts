@@ -27,11 +27,12 @@ export interface Diagnostic {
   id: string; projet_id: string; type_erp: string | null; categorie: number | null; mission_service_public: boolean
   enseignement: boolean; restaurant: boolean; contrainte_structurelle: boolean; effectif_etages: number | null
   prestations_hors_rdc: boolean; nb_places_parking: number | null; nb_places_assises: number | null; observations: string | null
+  maj_le?: string
 }
 export interface Element {
   id: string; diagnostic_id: string; niveau_id: string | null; sequence: string; element_type: string; libelle: string
   effectif_local: number | null; travaux_prevus: boolean; contrainte_structurelle: boolean; plusieurs_vantaux?: boolean
-  plan_x: number | null; plan_y: number | null; supprime_le: string | null
+  plan_x: number | null; plan_y: number | null; supprime_le: string | null; maj_le?: string
 }
 export interface Saisie {
   element_id: string; regle_id: string; mesure: number | null; mesure_palier: number | null; palier_bool: boolean | null
@@ -241,3 +242,10 @@ export function exigences(d: Diagnostic): { regleId: string; libelle: string; va
   res.push({ regleId: 'ACU-08', libelle: "Boucle magnétique à l'accueil", valeur: boucle ? 'Obligatoire' : 'Si accueil sonorisé' })
   return res
 }
+
+/** Types d'éléments proposés, chacun dans la première séquence où il apparaît (identique à la tablette). */
+export const TYPES_ELEMENTS: { type: string; sequence: string }[] = (() => {
+  const m = new Map<string, string>()
+  for (const r of REGLES) if (saisissable(r)) { const s = m.get(r.element); if (!s || r.sequence < s) m.set(r.element, r.sequence) }
+  return [...m].map(([type, sequence]) => ({ type, sequence })).sort((a, b) => a.sequence.localeCompare(b.sequence) || a.type.localeCompare(b.type))
+})()
