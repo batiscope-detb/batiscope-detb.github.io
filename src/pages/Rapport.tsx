@@ -125,7 +125,7 @@ function CorpsReleve({ d }: { d: Dossier }) {
       <Section titre="1. Synthèse" saut>
         <div className="kpi-rapport">
           <div><b>{ind.nbNiveaux}</b>niveau{ind.nbNiveaux > 1 ? 'x' : ''}</div>
-          <div><b>{ind.nbLocaux}</b>local{ind.nbLocaux > 1 ? 'aux' : ''}</div>
+          <div><b>{ind.nbLocaux}</b>{ind.nbLocaux > 1 ? 'locaux' : 'local'}</div>
           <div><b>{ind.nbConstats}</b>constat{ind.nbConstats > 1 ? 's' : ''}</div>
           <div><b>{ind.nbUrgents}</b>urgent{ind.nbUrgents > 1 ? 's' : ''}</div>
           <div><b>{euros(ind.estimation)}</b>travaux estimés HT</div>

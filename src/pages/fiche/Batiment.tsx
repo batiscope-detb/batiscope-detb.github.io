@@ -113,7 +113,7 @@ export default function Batiment() {
           <section className="carte" key={id || 'sans'}>
             <div className="entete-bloc">
               <h2 style={{ margin: 0 }}>{n ? n.libelle : 'Locaux sans niveau'}</h2>
-              {n && <span className="etiquette e-gris">{ls.length} local{ls.length > 1 ? 'aux' : ''}</span>}
+              {n && <span className="etiquette e-gris">{ls.length} {ls.length > 1 ? 'locaux' : 'local'}</span>}
               {n && <span className={`etiquette ${plan ? 'e-vert' : 'e-ambre'}`}>{plan ? `Plan importé${plan.page_index ? ` (page ${plan.page_index + 1})` : ''}` : 'Pas de plan'}</span>}
               {n && (edition ? (
                 <label className="case"><input type="checkbox" checked={fauteuil.get(n.id) ?? false} onChange={(e) => basculerFauteuil(n, e.target.checked)} /> Accessible en fauteuil</label>
