@@ -398,3 +398,14 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 .etapes-archive { margin: 6px 0 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
 .etapes-archive li div { margin-top: 4px; }
 .etapes-archive li.faite { color: var(--encre-2); }
+
+/* Vérifications périodiques */
+.entete-carte { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.entete-carte h2 { margin: 0; }
+.deux-champs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .deux-champs { grid-template-columns: 1fr; } }
+.puce-ech { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ech-retard { background: var(--rouge-pale); color: var(--rouge); }
+.ech-proche { background: var(--ambre-pale); color: var(--ambre); }
+.ech-ok { background: var(--vert-pale); color: var(--vert); }
+.ech-inconnue { background: rgba(127,127,160,.15); color: var(--encre-2); }

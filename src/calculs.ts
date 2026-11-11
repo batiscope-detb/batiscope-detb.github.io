@@ -1,5 +1,6 @@
 /** Indicateurs calculés à partir des données brutes (tableau de bord et fiches). */
-import type { Patrimoine, Projet, StatutErp, Constat, Lot } from './donnees'
+import type { Patrimoine, Projet, StatutErp, Constat, Lot, Verification } from './donnees'
+import { echeance } from './verifications'
 import { ajouter, lignes, reglesPour, synthese, syntheseVide, taux, type Ligne, type Synthese, type Element, type Diagnostic } from './moteur'
 
 export type StatutAffiche = StatutErp | 'a_diagnostiquer'
@@ -13,6 +14,7 @@ export interface IndicateursErp {
   diagnostic: Diagnostic | null; elements: LigneElement[]; acc: Synthese; taux: number | null
   derogationsEnCours: number; derogationsAccordees: number
   octets: number; derniereMaj: string
+  verifications: Verification[]; verifEnRetard: number; verifProches: number
 }
 
 /** Un bâtiment créé mais jamais relevé apparaît « À diagnostiquer ». */
@@ -46,6 +48,7 @@ export function indicateurs(p: Patrimoine): IndicateursErp[] {
   const diagParProjet = new Map(p.diagnostics.map((d) => [d.projet_id, d]))
   const elements = grouper(p.elements, (e) => e.diagnostic_id)
   const derog = grouper(p.derogations, (d) => d.diagnostic_id)
+  const verifs = grouper(p.verifications ?? [], (v) => v.projet_id)
   const fauteuil = new Map(p.accNiveaux.map((a) => [a.niveau_id, a.accessible_fauteuil]))
   const stock = new Map<string, number>()
   for (const s of p.stockage) stock.set(s.projet_id, (stock.get(s.projet_id) ?? 0) + Number(s.octets))
@@ -56,6 +59,7 @@ export function indicateurs(p: Patrimoine): IndicateursErp[] {
     const els = diag ? calculerAccessibilite(diag, elements.get(diag.id) ?? [], p.saisies, fauteuil) : []
     const acc = els.reduce((s, e) => ajouter(s, e.synthese), syntheseVide())
     const ds = diag ? derog.get(diag.id) ?? [] : []
+    const vs = verifs.get(projet.id) ?? []
     const dates = [projet.maj_le, ...cs.map((c) => c.maj_le)].sort()
     return {
       projet,
@@ -72,6 +76,9 @@ export function indicateurs(p: Patrimoine): IndicateursErp[] {
       derogationsAccordees: ds.filter((d) => d.statut === 'accordee').length,
       octets: stock.get(projet.id) ?? 0,
       derniereMaj: dates[dates.length - 1],
+      verifications: vs,
+      verifEnRetard: vs.filter((v) => echeance(v).etat === 'retard').length,
+      verifProches: vs.filter((v) => echeance(v).etat === 'proche').length,
     }
   })
 }
@@ -99,6 +106,8 @@ export function alertes(ind: IndicateursErp[]): Alerte[] {
     if (i.acc.bloquantes) res.push({ projetId, nom, niveau: 'rouge', texte: `${i.acc.bloquantes} non-conformité${i.acc.bloquantes > 1 ? 's' : ''} bloquante${i.acc.bloquantes > 1 ? 's' : ''} (accessibilité)` })
     if (i.constatsSansEstimation) res.push({ projetId, nom, niveau: 'ambre', texte: `${i.constatsSansEstimation} constat${i.constatsSansEstimation > 1 ? 's' : ''} sans estimation` })
     if (i.derogationsEnCours) res.push({ projetId, nom, niveau: 'ambre', texte: `${i.derogationsEnCours} dérogation${i.derogationsEnCours > 1 ? 's' : ''} en cours d'instruction` })
+    if (i.verifEnRetard) res.push({ projetId, nom, niveau: 'rouge', texte: `${i.verifEnRetard} vérification${i.verifEnRetard > 1 ? 's' : ''} périodique${i.verifEnRetard > 1 ? 's' : ''} en retard` })
+    if (i.verifProches) res.push({ projetId, nom, niveau: 'ambre', texte: `${i.verifProches} vérification${i.verifProches > 1 ? 's' : ''} à prévoir sous 60 jours` })
     if (i.acc.aExpertiser) res.push({ projetId, nom, niveau: 'gris', texte: `${i.acc.aExpertiser} point${i.acc.aExpertiser > 1 ? 's' : ''} à expertiser` })
   }
   const ordre = { rouge: 0, ambre: 1, gris: 2 }

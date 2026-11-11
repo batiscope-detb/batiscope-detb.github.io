@@ -66,15 +66,20 @@ const rel = () => supabase.schema('releves')
 const acc = () => supabase.schema('accessibilite')
 
 /** Tout le patrimoine, pour le tableau de bord (quelques milliers de lignes au plus). */
+export interface Verification {
+  id: string; projet_id: string; type: string; periodicite_mois: number | null; organisme: string | null
+  derniere_date: string | null; prochaine_date: string | null; observations: string | null; maj_le?: string
+}
+
 export interface Patrimoine {
   projets: Projet[]; niveaux: Niveau[]; locaux: Local[]; constats: Constat[]; lots: Lot[]
   diagnostics: Diagnostic[]; accNiveaux: AccNiveau[]; elements: Element[]; saisies: Saisie[]; derogations: Derogation[]
   stockage: { projet_id: string; bucket_id: string; nb_fichiers: number; octets: number }[]
-  typesLocaux: TypeLocal[]; points: PointControle[]
+  typesLocaux: TypeLocal[]; points: PointControle[]; verifications: Verification[]
 }
 
 export async function chargerPatrimoine(): Promise<Patrimoine> {
-  const [projets, niveaux, locaux, constats, lots, diagnostics, accNiveaux, elements, saisies, derogations, stockage, typesLocaux, points] = await Promise.all([
+  const [projets, niveaux, locaux, constats, lots, diagnostics, accNiveaux, elements, saisies, derogations, stockage, typesLocaux, points, verifications] = await Promise.all([
     tout<Projet>(() => rel().from('projet').select('*').is('supprime_le', null).order('nom') as unknown as Requete),
     tout<Niveau>(() => rel().from('niveau').select('id,projet_id,libelle,ordre,maj_le').is('supprime_le', null).order('ordre') as unknown as Requete),
     tout<Local>(() => rel().from('local').select('id,projet_id,niveau_id,libelle,type,ordre,etat_general,reserve_personnel,maj_le').is('supprime_le', null) as unknown as Requete),
@@ -88,8 +93,9 @@ export async function chargerPatrimoine(): Promise<Patrimoine> {
     supabase.schema('sync').from('v_stockage_par_projet').select('*').then(({ data }) => (data ?? []) as Patrimoine['stockage']),
     tout<TypeLocal>(() => rel().from('type_local').select('id,libelle,ordre').is('supprime_le', null).order('ordre') as unknown as Requete),
     tout<PointControle>(() => rel().from('point_controle').select('id,lot_id,libelle,ordre,obsolete').is('supprime_le', null).order('ordre') as unknown as Requete),
+    tout<Verification>(() => rel().from('verification_periodique').select('id,projet_id,type,periodicite_mois,organisme,derniere_date,prochaine_date,observations,maj_le').is('supprime_le', null) as unknown as Requete),
   ])
-  return { projets, niveaux, locaux, constats, lots, diagnostics, accNiveaux, elements, saisies, derogations, stockage, typesLocaux, points }
+  return { projets, niveaux, locaux, constats, lots, diagnostics, accNiveaux, elements, saisies, derogations, stockage, typesLocaux, points, verifications }
 }
 
 /** Détails d'un bâtiment, pour sa fiche (photos, points cochés, plans, repères, dérogations). */

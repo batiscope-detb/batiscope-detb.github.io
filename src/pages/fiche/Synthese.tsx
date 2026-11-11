@@ -4,6 +4,7 @@ import { BarreConformite } from '../../composants/Barres'
 import { Link } from 'react-router-dom'
 import { useFiche } from './contexte'
 import CycleVie from './CycleVie'
+import Verifications from './Verifications'
 
 export default function Synthese() {
   const { ind, constats, p } = useFiche()
@@ -19,6 +20,7 @@ export default function Synthese() {
           <Link className="bouton" to={`/registre/${ind.projet.id}`}>Registre public d'accessibilité</Link>
         </div>
       </section>
+      <Verifications />
       <CycleVie />
       <>
         <section className="grille-kpi">
