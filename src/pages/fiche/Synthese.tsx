@@ -16,6 +16,7 @@ export default function Synthese() {
           <Link className="bouton" to={`/rapport/${ind.projet.id}/releve`}>Rapport de relevé (PDF)</Link>
           <Link className={`bouton${ind.diagnostic ? '' : ' inactif'}`} to={ind.diagnostic ? `/rapport/${ind.projet.id}/accessibilite` : '#'} aria-disabled={!ind.diagnostic}>Rapport d'accessibilité (PDF)</Link>
           <Link className={`bouton${ind.diagnostic ? '' : ' inactif'}`} to={ind.diagnostic ? `/notice/${ind.projet.id}` : '#'} aria-disabled={!ind.diagnostic}>Notice d'accessibilité (AT)</Link>
+          <Link className="bouton" to={`/registre/${ind.projet.id}`}>Registre public d'accessibilité</Link>
         </div>
       </section>
       <CycleVie />

@@ -10,6 +10,7 @@ import FicheErp from './pages/FicheErp'
 import Referentiel from './pages/Referentiel'
 import Rapport from './pages/Rapport'
 import Notice from './pages/Notice'
+import RegistreEdition from './pages/RegistreEdition'
 import { Notifications } from './composants/Ui'
 import { FormulaireMotDePasse, Parametres, type Moi } from './composants/Parametres'
 import { reglages } from './reglages'
@@ -115,6 +116,7 @@ export default function App() {
           <Route path="/referentiel" element={<Referentiel />} />
           <Route path="/rapport/:id/:genre" element={<Rapport />} />
           <Route path="/notice/:id" element={<Notice />} />
+          <Route path="/registre/:id" element={<RegistreEdition />} />
           <Route path="*" element={<main className="page"><p>Page introuvable. <Link to="/">Retour au tableau de bord</Link></p></main>} />
         </Routes>
       )}

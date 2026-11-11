@@ -10,9 +10,11 @@ import { travauxParLot } from '../calculs'
 import { exigences, libelleMesure, libelleSeuil, LIBELLE_STATUT, taux, VERSION_REFERENTIEL, type Statut } from '../moteur'
 import { genererNotice, introduction, RUBRIQUES } from '../notice'
 import { useDonnees } from '../App'
+import { chargerRegistre, niveauAccessibilite, type Registre } from '../registre'
 
-type Genre = 'releve' | 'accessibilite' | 'notice'
+type Genre = 'releve' | 'accessibilite' | 'notice' | 'registre'
 const TITRES: Record<Genre, string> = {
+  registre: "Registre public d'accessibilité",
   releve: "Relevé d'état du bâtiment",
   accessibilite: "Diagnostic d'accessibilité — ERP existant",
   notice: "Notice d'accessibilité",
@@ -27,8 +29,8 @@ const DEROG: Record<string, string> = {
 
 export default function Rapport() {
   const { id, genre: g } = useParams()
-  const genre = (['releve', 'accessibilite', 'notice'].includes(g ?? '') ? g : 'releve') as Genre
-  const d = useDossier(id, genre === 'notice' ? null : genre === 'releve' ? 'releves' : 'accessibilite')
+  const genre = (['releve', 'accessibilite', 'notice', 'registre'].includes(g ?? '') ? g : 'releve') as Genre
+  const d = useDossier(id, genre === 'notice' || genre === 'registre' ? null : genre === 'releve' ? 'releves' : 'accessibilite')
   const { nomAgent } = useDonnees()
   const [photosChargees, setPhotosChargees] = useState(false)
 
@@ -61,6 +63,7 @@ export default function Rapport() {
           {genre === 'releve' && <CorpsReleve d={d} />}
           {genre === 'accessibilite' && <CorpsAccessibilite d={d} />}
           {genre === 'notice' && <CorpsNotice d={d} />}
+          {genre === 'registre' && <CorpsRegistre d={d} />}
           <footer className="fin-rapport">Document édité le {new Date().toLocaleDateString('fr-FR')} par la Direction Études et Travaux Bâtiments — Ville de Cherbourg-en-Cotentin — appli Relevés DETB v{__VERSION__}</footer>
         </article>
       )}
@@ -81,7 +84,7 @@ function Couverture({ genre, d, agent }: { genre: Genre; d: Dossier; agent: stri
         <div>Ville de Cherbourg-en-Cotentin<br />Pôle Patrimoine et Cadre de vie<br /><b>Direction Études et Travaux Bâtiments</b></div>
       </div>
       <div className="couv-titre">
-        <p className="couv-genre">{TITRES[genre]}{genre === 'notice' && <><br /><small>à joindre à la demande d'autorisation de construire, d'aménager ou de modifier un ERP (Cerfa n° 13824)</small></>}</p>
+        <p className="couv-genre">{TITRES[genre]}{genre === 'registre' && <><br /><small>établi en application de l'arrêté du 19 avril 2017 — à la disposition du public au point d'accueil principal</small></>}{genre === 'notice' && <><br /><small>à joindre à la demande d'autorisation de construire, d'aménager ou de modifier un ERP (Cerfa n° 13824)</small></>}</p>
         <h1>{pr.nom}</h1>
         <p>{[pr.adresse, pr.commune_deleguee].filter(Boolean).join(' — ')}</p>
         {diag?.type_erp && <p>ERP de type {[diag.type_erp, ...(diag.activites_secondaires ?? [])].join(', ')}{diag.categorie ? ` — ${diag.categorie}e catégorie` : ''}</p>}
@@ -91,7 +94,7 @@ function Couverture({ genre, d, agent }: { genre: Genre; d: Dossier; agent: stri
         {pr.code && <tr><th>Code patrimoine</th><td>{pr.code}</td></tr>}
         <tr><th>Date d'édition</th><td>{new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</td></tr>
         <tr><th>Établi par</th><td>{agent}</td></tr>
-        {genre !== 'releve' && <tr><th>Référentiel</th><td>{VERSION_REFERENTIEL}</td></tr>}
+        {(genre === 'accessibilite' || genre === 'notice') && <tr><th>Référentiel</th><td>{VERSION_REFERENTIEL}</td></tr>}
       </tbody></table>
     </section>
   )
@@ -364,6 +367,59 @@ function CorpsNotice({ d }: { d: Dossier }) {
         </Section>
       )}
       <p className="signature">Fait à Cherbourg-en-Cotentin, le {entete?.date_notice ? date(entete.date_notice) : new Date().toLocaleDateString('fr-FR')}<br /><br />Le maître d'ouvrage</p>
+    </>
+  )
+}
+
+// --- Registre public d'accessibilité ---------------------------------------------------------------------------
+function CorpsRegistre({ d }: { d: Dossier }) {
+  const pr = d.ind!.projet
+  const diag = d.ind!.diagnostic
+  const [r, setR] = useState<Registre | null | undefined>(undefined)
+  const [notice, setNotice] = useState(false)
+  useEffect(() => {
+    chargerRegistre(pr.id).then(setR).catch(() => setR(null))
+    if (diag) supabase.schema('accessibilite').from('notice_paragraphe').select('id', { count: 'exact', head: true }).eq('diagnostic_id', diag.id).is('supprime_le', null)
+      .then(({ count }) => setNotice((count ?? 0) > 0))
+  }, [pr.id, diag?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (r === undefined) return <div className="chargement"><span className="roue" />Chargement du registre…</div>
+  const niv = niveauAccessibilite(d.ind!, d.derogations)
+  const cat = diag?.categorie ? Number(diag.categorie) : null
+  const texte = (v: string | null | undefined, defaut = 'Non renseigné.') => v ? v.split('\n').map((l, i) => <p key={i} style={{ margin: '2px 0' }}>{l}</p>) : <p className="remarque">{defaut}</p>
+  const pieces: { libelle: string; present: boolean; detail?: string }[] = [
+    { libelle: "Attestation d'accessibilité ou attestation d'achèvement des travaux de l'agenda", present: !!r?.attestation_accessibilite_le, detail: r?.attestation_accessibilite_le ? `du ${date(r.attestation_accessibilite_le)}` : undefined },
+    { libelle: "Calendrier de l'agenda d'accessibilité programmée (si l'établissement est sous agenda)", present: !!r?.agenda_reference, detail: r?.agenda_reference ?? undefined },
+    { libelle: 'Arrêtés préfectoraux accordant une dérogation', present: niv.derogations.length > 0, detail: niv.derogations.length ? `${niv.derogations.length} dérogation(s)` : 'aucune' },
+    { libelle: "Notice d'accessibilité (si l'établissement a fait l'objet de travaux autorisés)", present: notice },
+    { libelle: "Plaquette « Bien accueillir les personnes handicapées » / document d'aide à l'accueil du personnel", present: !!r?.document_accueil },
+    ...(cat && cat <= 4 ? [{ libelle: "Attestation annuelle de formation du personnel d'accueil signée par l'employeur", present: !!r?.attestation_formation_le, detail: r?.attestation_formation_le ? `du ${date(r.attestation_formation_le)}` : undefined }] : []),
+  ]
+  return (
+    <>
+      <Section titre="1. Fiche de synthèse" saut>
+        <table className="tab-rapport"><tbody>
+          <tr><th>Établissement</th><td>{pr.nom} — {[pr.adresse, pr.commune_deleguee].filter(Boolean).join(', ')}</td></tr>
+          {diag?.type_erp && <tr><th>Type et catégorie</th><td>{[diag.type_erp, ...(diag.activites_secondaires ?? [])].join(', ')}{diag.categorie ? ` — ${diag.categorie}e catégorie` : ''}</td></tr>}
+          <tr><th>Exploitant</th><td>Ville de Cherbourg-en-Cotentin</td></tr>
+          <tr><th>Contact accessibilité</th><td>{r?.contact || 'Direction Études et Travaux Bâtiments'}</td></tr>
+          <tr><th>Registre consultable</th><td>{r?.lieu_consultation || "Au point d'accueil principal de l'établissement"}</td></tr>
+        </tbody></table>
+        <h3>Prestations offertes</h3>{texte(r?.prestations)}
+        <h3>Niveau d'accessibilité</h3>
+        <p><b>Accessible :</b> {niv.accessible.length ? niv.accessible.join(', ') : '—'}</p>
+        <p><b>Non accessible à ce jour :</b> {niv.nonAccessible.length ? niv.nonAccessible.join(', ') : 'aucune partie relevée comme non accessible'}</p>
+        {niv.derogations.length > 0 && <p><b>Dérogations accordées :</b> {niv.derogations.join(' ; ')}</p>}
+        <h3>Prestations non accessibles et solutions de remplacement</h3>{texte(r?.prestations_non_accessibles, 'Sans objet.')}
+        <h3>Matériel adapté</h3>{texte(r?.materiel_adapte, 'Sans objet.')}
+        <h3>Maintenance des équipements d'accessibilité</h3>{texte(r?.maintenance, 'Sans objet.')}
+        <h3>Formation du personnel d'accueil</h3>{texte(r?.formation_personnel)}
+      </Section>
+      <Section titre="2. Pièces du registre">
+        <table className="tab-rapport"><thead><tr><th>Pièce</th><th style={{ width: 90 }}>Jointe</th><th>Précision</th></tr></thead><tbody>
+          {pieces.map((x) => <tr key={x.libelle}><td>{x.libelle}</td><td>{x.present ? 'Oui' : 'À joindre'}</td><td>{x.detail ?? ''}</td></tr>)}
+        </tbody></table>
+        <p className="remarque">Le registre est tenu à jour par l'exploitant et mis à disposition du public, sous forme papier ou dématérialisée.</p>
+      </Section>
     </>
   )
 }
