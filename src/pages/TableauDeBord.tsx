@@ -5,6 +5,7 @@ import { LIBELLE_STATUT_ERP, euros, date, octets } from '../donnees'
 import { alertes, travauxParLot, type StatutAffiche, type IndicateursErp } from '../calculs'
 import { BarreConformite } from '../composants/Barres'
 import { DialogueProjet } from './fiche/DialogueProjet'
+import { BandeauVeille } from '../veille'
 
 const ORDRE_STATUTS: StatutAffiche[] = ['a_diagnostiquer', 'diagnostic', 'programme', 'travaux', 'atteste', 'archive']
 const COULEUR_STATUT: Record<StatutAffiche, string> = {
@@ -90,6 +91,7 @@ export default function TableauDeBord() {
         </div>
       </div>
 
+      <BandeauVeille />
       <div className="filtres">
         <label>Rechercher<input className="champ" type="search" placeholder="Nom, adresse, code" value={recherche} onChange={(e) => setRecherche(e.target.value)} /></label>
         <label>Commune déléguée

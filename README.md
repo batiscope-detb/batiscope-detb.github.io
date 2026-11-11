@@ -14,6 +14,16 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.5 (rapports, notice d'accessibilité, veille réglementaire)
+- Rapports imprimables A4 (bouton « Imprimer / enregistrer en PDF ») depuis la synthèse de la fiche :
+  relevé d'état (synthèse, travaux par corps d'état, plans annotés, constats avec photos, récapitulatif) et
+  diagnostic d'accessibilité (contexte, exigences, synthèse, plans, détail par élément, dérogations).
+- Notice d'accessibilité à joindre à une AT (Cerfa 13824) : rubriques des articles 2 à 19 de l'arrêté du 8 décembre 2014,
+  paragraphes générés depuis le diagnostic puis modifiables (texte retouché conservé lors des mises à jour), en-tête du dossier,
+  aperçu et PDF.
+- Veille réglementaire : vérification mensuelle automatique des textes du référentiel sur Légifrance (tâche planifiée, le 2 du mois),
+  compte rendu dans Paramètres → Veille réglementaire, bandeau sur le tableau de bord en cas de nouveautés ; aussi affiché sur la tablette (v0.8).
+
 ## Version 0.4 (ergonomie et fiche ERP)
 - Interrupteur « Modification » dans la barre du haut, toujours visible.
 - Suppression d'un local avec ses constats et photos (confirmation, propagée aux tablettes).

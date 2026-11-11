@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState, type ReactNode } from 'react'
 import { BUCKETS, date, fusionner } from '../../donnees'
 import type { LigneElement } from '../../calculs'
@@ -106,6 +107,8 @@ export default function Accessibilite() {
           </select>
         </label>
         {edition && <button className="bouton primaire" style={{ alignSelf: 'flex-end' }} onClick={() => setDlgElement('nouveau')}>+ Ajouter un élément</button>}
+        <Link className="bouton" style={{ alignSelf: 'flex-end' }} to={`/notice/${ind.projet.id}`}>Notice d'accessibilité (AT)</Link>
+        <Link className="bouton" style={{ alignSelf: 'flex-end' }} to={`/rapport/${ind.projet.id}/accessibilite`}>Rapport (PDF)</Link>
         <span style={{ color: 'var(--encre-2)', fontSize: 12, alignSelf: 'center' }}>{VERSION_REFERENTIEL}</span>
       </div>
 

@@ -1,12 +1,22 @@
 import { euros, octets } from '../../donnees'
 import { travauxParLot } from '../../calculs'
 import { BarreConformite } from '../../composants/Barres'
+import { Link } from 'react-router-dom'
 import { useFiche } from './contexte'
 
 export default function Synthese() {
   const { ind, constats, p } = useFiche()
     const lots = travauxParLot(constats, p.lots)
     return (
+      <>
+      <section className="carte documents">
+        <h2>Documents</h2>
+        <div className="boutons-ligne">
+          <Link className="bouton" to={`/rapport/${ind.projet.id}/releve`}>Rapport de relevé (PDF)</Link>
+          <Link className={`bouton${ind.diagnostic ? '' : ' inactif'}`} to={ind.diagnostic ? `/rapport/${ind.projet.id}/accessibilite` : '#'} aria-disabled={!ind.diagnostic}>Rapport d'accessibilité (PDF)</Link>
+          <Link className={`bouton${ind.diagnostic ? '' : ' inactif'}`} to={ind.diagnostic ? `/notice/${ind.projet.id}` : '#'} aria-disabled={!ind.diagnostic}>Notice d'accessibilité (AT)</Link>
+        </div>
+      </section>
       <>
         <section className="grille-kpi">
           <div className="kpi"><span>Niveaux / locaux</span><b>{ind!.nbNiveaux} / {ind!.nbLocaux}</b></div>
@@ -44,6 +54,6 @@ export default function Synthese() {
           </section>
         </div>
       </>
+      </>
     )
-  }
-
+}

@@ -1,3 +1,4 @@
+import { HistoriqueVeille } from '../veille'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../donnees'
 import { VERSION_REFERENTIEL } from '../moteur'
@@ -6,7 +7,7 @@ import bibliotheque from '../data/symboles_plan.json'
 import { Champ, Dialogue, executer, signaler } from './Ui'
 
 export interface Moi { id: string; nom: string; email: string; role: string }
-type Onglet = 'compte' | 'apparence' | 'utilisateurs' | 'apropos'
+type Onglet = 'compte' | 'apparence' | 'utilisateurs' | 'veille' | 'apropos'
 
 /** Fenêtre « Paramètres », ouverte par le logo (comme « À propos et réglages » sur la tablette). */
 export function Parametres({ ouvert, fermer, moi, renommer }: { ouvert: boolean; fermer: () => void; moi: Moi; renommer: (nom: string) => void }) {
@@ -14,7 +15,7 @@ export function Parametres({ ouvert, fermer, moi, renommer }: { ouvert: boolean;
   const admin = moi.role === 'admin'
   const onglets: { id: Onglet; libelle: string }[] = [
     { id: 'compte', libelle: 'Mon compte' }, { id: 'apparence', libelle: 'Apparence' },
-    ...(admin ? [{ id: 'utilisateurs' as Onglet, libelle: 'Utilisateurs' }] : []), { id: 'apropos', libelle: 'À propos' },
+    ...(admin ? [{ id: 'utilisateurs' as Onglet, libelle: 'Utilisateurs' }] : []), { id: 'veille', libelle: 'Veille réglementaire' }, { id: 'apropos', libelle: 'À propos' },
   ]
   return (
     <Dialogue titre="Paramètres" ouvert={ouvert} fermer={fermer} large>
@@ -24,6 +25,7 @@ export function Parametres({ ouvert, fermer, moi, renommer }: { ouvert: boolean;
       {onglet === 'compte' && <Compte moi={moi} renommer={renommer} />}
       {onglet === 'apparence' && <Apparence />}
       {onglet === 'utilisateurs' && admin && <Utilisateurs moi={moi} />}
+      {onglet === 'veille' && <HistoriqueVeille admin={admin} />}
       {onglet === 'apropos' && <APropos />}
     </Dialogue>
   )

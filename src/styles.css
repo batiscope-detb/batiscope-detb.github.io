@@ -326,3 +326,72 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 .ajout-ligne { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; } .ajout-ligne input { min-width: 200px; }
 .effectifs { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 10px 0 0; font-size: 13px; color: var(--encre-2); }
 .puce { display: inline-flex; align-items: center; gap: 4px; } .puce button { all: unset; cursor: pointer; font-weight: 700; padding: 0 2px; }
+.bandeau-veille { background: var(--rouge-pale); color: var(--rouge); border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+
+/* --- Rapports imprimables (A4) --- */
+.bouton.inactif { opacity: .45; pointer-events: none; }
+.barre-rapport { position: sticky; top: 0; z-index: 20; display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 28px; background: var(--carte); border-bottom: 1px solid var(--bord); }
+.barre-rapport span { font-weight: 600; color: var(--violet); }
+.rapport { --r-encre: #1B1B3D; --r-violet: #2E2B57; --r-gris: #55536E; --r-bord: #D9D6E8; background: #fff; color: var(--r-encre); max-width: 210mm; margin: 24px auto; padding: 16mm 15mm; box-shadow: 0 4px 24px rgba(0,0,0,.12); font-size: 10.5pt; line-height: 1.4; }
+.rapport h1 { color: var(--r-violet); font-size: 24pt; margin: 6px 0; }
+.rapport h2 { color: var(--r-violet); font-size: 15pt; border-bottom: 2px solid var(--r-violet); padding-bottom: 3px; margin: 0 0 10px; }
+.rapport h3 { color: var(--r-violet); font-size: 12pt; margin: 14px 0 6px; }
+.rapport h4 { font-size: 10.5pt; margin: 10px 0 4px; display: flex; gap: 8px; }
+.rapport p { margin: 3px 0; }
+.rapport small { color: var(--r-gris); }
+.couverture { min-height: 250mm; display: flex; flex-direction: column; gap: 18px; }
+.couv-haut { display: flex; gap: 14px; align-items: center; color: var(--r-gris); font-size: 9.5pt; border-bottom: 1px solid var(--r-bord); padding-bottom: 10px; }
+.couv-haut img { height: 60px; }
+.couv-titre { margin-top: 30mm; }
+.couv-genre { text-transform: uppercase; letter-spacing: .08em; color: #9A6700; font-weight: 700; font-size: 11pt; }
+.couv-genre small { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--r-gris); }
+.couv-photo { max-width: 100%; max-height: 95mm; object-fit: cover; border-radius: 4px; align-self: flex-start; }
+.couv-infos { margin-top: auto; border-collapse: collapse; font-size: 10pt; }
+.couv-infos th { text-align: left; color: var(--r-gris); font-weight: 500; padding: 2px 14px 2px 0; }
+.section-rapport { margin-top: 14px; }
+.section-rapport.saut { break-before: page; }
+.kpi-rapport { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+.kpi-rapport div { border: 1px solid var(--r-bord); border-radius: 4px; padding: 6px 8px; font-size: 8.5pt; color: var(--r-gris); }
+.kpi-rapport b { display: block; font-size: 14pt; color: var(--r-violet); }
+.tab-rapport { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9pt; }
+.tab-rapport th, .tab-rapport td { border: 1px solid var(--r-bord); padding: 4px 6px; text-align: left; vertical-align: top; }
+.tab-rapport thead th, .tab-rapport tbody th { background: #F1F0F7; font-weight: 600; }
+.tab-rapport tfoot td { font-weight: 700; background: #F7F6FB; }
+.tab-rapport.serre { font-size: 8.5pt; }
+.tab-rapport .num { text-align: right; white-space: nowrap; }
+.tab-rapport tr { break-inside: avoid; }
+.remarque { color: var(--r-gris); font-size: 9pt; font-style: italic; }
+.plan-rapport { margin: 0 0 12px; break-inside: avoid; }
+.plan-rapport figcaption { font-weight: 700; color: var(--r-violet); margin-bottom: 4px; }
+.plan-rapport img { width: 100%; border: 1px solid var(--r-bord); }
+.legende-rapport { font-size: 8.5pt; color: var(--r-gris); }
+.local-rapport { margin-bottom: 8px; }
+.local-rapport h4 { border-bottom: 1px solid var(--r-bord); padding-bottom: 2px; }
+.local-rapport .montant, .entete-constat .montant { margin-left: auto; font-weight: 700; }
+.constat-rapport { padding: 4px 0 6px 10px; border-left: 3px solid var(--r-bord); margin: 4px 0; break-inside: avoid; }
+.entete-constat { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.note-constat { white-space: pre-wrap; }
+.photos-rapport { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.photos-rapport img { width: 55mm; height: 41mm; object-fit: cover; border: 1px solid var(--r-bord); }
+.photos-rapport.petites img { width: 32mm; height: 24mm; }
+.etq { display: inline-block; padding: 0 6px; border-radius: 8px; font-size: 8pt; font-weight: 600; border: 1px solid; white-space: nowrap; }
+.etq.g-urgent, .etq.s-NC { color: #B3261E; border-color: #E7B7B2; background: #FBE9E7; }
+.etq.g-a_prevoir, .etq.s-AE, .etq.s-NV { color: #9A6700; border-color: #EBD49B; background: #FDF3DC; }
+.etq.g-info, .etq.s-SO, .etq.s-vide { color: #55536E; border-color: #D9D6E8; background: #F1F0F7; }
+.etq.s-C { color: #2E7D32; border-color: #B9DCBB; background: #E6F2E7; }
+.etq.s-CT { color: #1F6B55; border-color: #A9D6C6; background: #E3F1EC; }
+.rubrique-notice { break-inside: avoid-page; }
+.para-notice { white-space: pre-wrap; margin: 4px 0 8px; }
+.signature { margin-top: 18mm; text-align: right; }
+.fin-rapport { margin-top: 14mm; border-top: 1px solid var(--r-bord); padding-top: 6px; font-size: 8pt; color: var(--r-gris); text-align: center; }
+.para-edition { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.para-edition textarea { width: 100%; font-size: 13px; line-height: 1.45; }
+.para-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+@page { size: A4; margin: 14mm 13mm 16mm; }
+@media print {
+  body:has(.rapport) .entete, body:has(.rapport) .pied, .barre-rapport, .notifications { display: none !important; }
+  body:has(.rapport) { background: #fff !important; }
+  .rapport { margin: 0; padding: 0; max-width: none; box-shadow: none; }
+  .couverture { min-height: 262mm; }
+}
+@media screen and (max-width: 800px) { .rapport { padding: 16px; } .kpi-rapport { grid-template-columns: repeat(2, 1fr); } }
