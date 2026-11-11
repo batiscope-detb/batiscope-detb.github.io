@@ -295,3 +295,34 @@ fieldset.points legend { font-size: 13px; color: var(--encre-2); padding: 0 4px;
 .legende-plan.colonnes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .bandeau-placement svg { flex: none; }
 .plan-edition { grid-template-columns: minmax(0, 1fr) 330px; }
+
+/* --- v0.4 : zoom du plan, panneau repliable, fenêtres, interrupteur clair --- */
+.plan-vue { position: relative; overflow: hidden; border: 1px solid var(--bord); border-radius: 8px; background: #fff; }
+.plan-vue.zoome { cursor: grab; }
+.plan-vue.zoome:active { cursor: grabbing; }
+.plan-vue .plan { display: block; border: none; border-radius: 0; transform-origin: 0 0; will-change: transform; max-width: 100%; }
+.plan-vue .plan canvas { width: 100%; }
+.plan-vue .repere { transform: translate(-50%, -50%) scale(calc(1 / var(--zoom, 1))); }
+.zoom-commandes { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 4px; align-items: center; background: rgba(255,255,255,.92); border: 1px solid var(--bord-2); border-radius: 8px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.zoom-commandes button { width: 30px; height: 30px; border: 1px solid #CFCBE3; border-radius: 6px; background: #fff; color: #1B1B3D; font-size: 17px; cursor: pointer; }
+.zoom-commandes button:disabled { opacity: .4; cursor: default; }
+.zoom-commandes span { font-size: 12px; color: #55536E; padding: 0 4px; font-variant-numeric: tabular-nums; }
+.interrupteur.clair { color: #fff; font-size: 13px; }
+.interrupteur.clair .glissiere { background: rgba(255,255,255,.3); }
+.interrupteur.clair.actif .glissiere { background: var(--or); }
+.plan-edition.replie { grid-template-columns: minmax(0, 1fr) 36px; }
+.panneau-replie { position: sticky; top: 80px; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 36px; padding: 10px 0; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); color: var(--violet); cursor: pointer; font-weight: 600; }
+.panneau-replie .vertical { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 13px; }
+.panneau-replie:hover { background: var(--pale); }
+.panneau-plan { position: sticky; }
+.panneau-plan .replier { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--bord-2); background: var(--carte); color: var(--encre); cursor: pointer; z-index: 1; }
+dialog.dialogue { resize: both; overflow: hidden; min-width: 340px; min-height: 220px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+dialog.dialogue.large { width: min(860px, calc(100vw - 32px)); }
+dialog.dialogue form { height: 100%; max-height: none; }
+dialog.dialogue .dialogue-corps { flex: 1 1 auto; min-height: 0; }
+dialog.dialogue h2.poignee { cursor: move; user-select: none; padding-bottom: 6px; }
+dialog.dialogue[open] { display: flex; flex-direction: column; }
+dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
+.ajout-ligne { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; } .ajout-ligne input { min-width: 200px; }
+.effectifs { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 10px 0 0; font-size: 13px; color: var(--encre-2); }
+.puce { display: inline-flex; align-items: center; gap: 4px; } .puce button { all: unset; cursor: pointer; font-weight: 700; padding: 0 2px; }

@@ -21,7 +21,7 @@ export interface Projet {
   cree_le: string; maj_le: string; recu_le: string; maj_par: string | null
 }
 export interface Niveau { id: string; projet_id: string; libelle: string; ordre: number; maj_le?: string }
-export interface Local { id: string; projet_id: string; niveau_id: string | null; libelle: string; type: string | null; ordre: number; etat_general: number | null; maj_le?: string }
+export interface Local { id: string; projet_id: string; niveau_id: string | null; libelle: string; type: string | null; ordre: number; etat_general: number | null; reserve_personnel?: boolean; maj_le?: string }
 export interface Lot { id: string; libelle: string; ordre: number; archive_le: string | null }
 export interface Constat {
   id: string; local_id: string; lot_id: string | null; note: string | null; gravite: 'info' | 'a_prevoir' | 'urgent' | null
@@ -31,6 +31,7 @@ export interface PhotoReleve { id: string; constat_id: string; point_controle_id
 export interface PointControle { id: string; lot_id: string; libelle: string; ordre: number; obsolete?: boolean }
 export interface TypeLocal { id: string; libelle: string; ordre: number }
 export interface ConstatPoint { constat_id: string; point_controle_id: string; note: string | null }
+export interface Interaction { constat_id: string; lot_id: string }
 export interface PlanNiveau { niveau_id: string; storage_path: string | null; page_index: number; maj_le?: string }
 export interface Marqueur { id: string; niveau_id: string; local_id: string; x_relatif: number; y_relatif: number; numero: number; maj_le?: string }
 export interface Annotation {
@@ -38,7 +39,7 @@ export interface Annotation {
   taille: 's' | 'm' | 'l'; valeur: string | null; commentaire: string | null; couleur: string | null
   lien_type: 'local' | 'constat' | 'element' | null; lien_id: string | null; maj_le?: string
 }
-export interface AccNiveau { niveau_id: string; accessible_fauteuil: boolean }
+export interface AccNiveau { niveau_id: string; accessible_fauteuil: boolean; effectif_public?: number | null; effectif_personnel?: number | null; niveau_acces?: boolean; maj_le?: string }
 export interface PhotoAcc { id: string; element_id: string; regle_id: string | null; storage_path: string | null; maj_le?: string }
 export interface Derogation {
   id: string; diagnostic_id: string; element_id: string | null; regle_id: string | null; motif: string; sous_motif: string | null
@@ -76,11 +77,11 @@ export async function chargerPatrimoine(): Promise<Patrimoine> {
   const [projets, niveaux, locaux, constats, lots, diagnostics, accNiveaux, elements, saisies, derogations, stockage, typesLocaux, points] = await Promise.all([
     tout<Projet>(() => rel().from('projet').select('*').is('supprime_le', null).order('nom') as unknown as Requete),
     tout<Niveau>(() => rel().from('niveau').select('id,projet_id,libelle,ordre,maj_le').is('supprime_le', null).order('ordre') as unknown as Requete),
-    tout<Local>(() => rel().from('local').select('id,projet_id,niveau_id,libelle,type,ordre,etat_general,maj_le').is('supprime_le', null) as unknown as Requete),
+    tout<Local>(() => rel().from('local').select('id,projet_id,niveau_id,libelle,type,ordre,etat_general,reserve_personnel,maj_le').is('supprime_le', null) as unknown as Requete),
     tout<Constat>(() => rel().from('constat').select('id,local_id,lot_id,note,gravite,estimation,cree_le,maj_le,maj_par').is('supprime_le', null) as unknown as Requete),
     tout<Lot>(() => rel().from('lot').select('id,libelle,ordre,archive_le').is('supprime_le', null).order('ordre') as unknown as Requete),
     tout<Diagnostic>(() => acc().from('diagnostic').select('*').is('supprime_le', null) as unknown as Requete),
-    tout<AccNiveau>(() => acc().from('acc_niveau').select('niveau_id,accessible_fauteuil').is('supprime_le', null) as unknown as Requete),
+    tout<AccNiveau>(() => acc().from('acc_niveau').select('niveau_id,accessible_fauteuil,effectif_public,effectif_personnel,niveau_acces,maj_le').is('supprime_le', null) as unknown as Requete),
     tout<Element>(() => acc().from('element').select('*').is('supprime_le', null) as unknown as Requete),
     tout<Saisie>(() => acc().from('constat').select('element_id,regle_id,mesure,mesure_palier,palier_bool,statut_force,commentaire').is('supprime_le', null) as unknown as Requete),
     tout<Derogation>(() => acc().from('derogation').select('*').is('supprime_le', null) as unknown as Requete),
@@ -94,13 +95,13 @@ export async function chargerPatrimoine(): Promise<Patrimoine> {
 /** Détails d'un bâtiment, pour sa fiche (photos, points cochés, plans, repères, dérogations). */
 export interface DetailProjet {
   photosReleves: PhotoReleve[]; constatPoints: ConstatPoint[]; plans: PlanNiveau[]; marqueurs: Marqueur[]
-  photosAcc: PhotoAcc[]; solutions: SolutionEquivalente[]; agents: Agent[]; annotations: Annotation[]
+  photosAcc: PhotoAcc[]; solutions: SolutionEquivalente[]; agents: Agent[]; annotations: Annotation[]; interactions: Interaction[]
 }
 
 export async function chargerDetail(projetId: string, constatIds: string[], niveauIds: string[], elementIds: string[], diagnosticId: string | null): Promise<DetailProjet> {
   const paquets = <T,>(ids: string[], f: (lot: string[]) => Promise<T[]>) =>
     Promise.all(Array.from({ length: Math.ceil(ids.length / 150) }, (_, i) => f(ids.slice(i * 150, i * 150 + 150)))).then((r) => r.flat())
-  const [photosReleves, constatPoints, plans, marqueurs, photosAcc, solutions, agents, annotations] = await Promise.all([
+  const [photosReleves, constatPoints, plans, marqueurs, photosAcc, solutions, agents, annotations, interactions] = await Promise.all([
     paquets(constatIds, (lot) => tout<PhotoReleve>(() => rel().from('photo').select('id,constat_id,point_controle_id,storage_path,ordre,maj_le').in('constat_id', lot).is('supprime_le', null) as unknown as Requete)),
     paquets(constatIds, (lot) => tout<ConstatPoint>(() => rel().from('constat_point_controle').select('constat_id,point_controle_id,note').in('constat_id', lot).is('supprime_le', null) as unknown as Requete)),
     paquets(niveauIds, (lot) => tout<PlanNiveau>(() => rel().from('plan_niveau').select('niveau_id,storage_path,page_index,maj_le').in('niveau_id', lot).is('supprime_le', null) as unknown as Requete)),
@@ -111,9 +112,10 @@ export async function chargerDetail(projetId: string, constatIds: string[], nive
       : Promise.resolve([] as SolutionEquivalente[]),
     tout<Agent>(() => rel().from('agent').select('id,nom,email,role,actif') as unknown as Requete),
     paquets(niveauIds, (lot) => tout<Annotation>(() => rel().from('annotation').select('id,niveau_id,type,x,y,points,rotation,taille,valeur,commentaire,couleur,lien_type,lien_id,maj_le').in('niveau_id', lot).is('supprime_le', null) as unknown as Requete)),
+    paquets(constatIds, (lot) => tout<Interaction>(() => rel().from('constat_interaction').select('constat_id,lot_id').in('constat_id', lot).is('supprime_le', null) as unknown as Requete)),
   ])
   void projetId
-  return { photosReleves, constatPoints, plans, marqueurs, photosAcc, solutions, agents, annotations }
+  return { photosReleves, constatPoints, plans, marqueurs, photosAcc, solutions, agents, annotations, interactions }
 }
 
 /** Adresses temporaires (1 h) des fichiers privés d'un bucket. */

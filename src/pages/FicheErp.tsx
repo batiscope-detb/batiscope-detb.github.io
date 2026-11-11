@@ -16,16 +16,14 @@ const ONGLETS: { id: Onglet; libelle: string }[] = [
   { id: 'accessibilite', libelle: 'Accessibilité' }, { id: 'plans', libelle: 'Plans et repères' },
 ]
 
-const lireEdition = () => { try { return localStorage.getItem('detb-edition') === '1' } catch { return false } }
 
 export default function FicheErp() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
   const onglet = (params.get('onglet') as Onglet) || 'synthese'
-  const { donnees, modifier } = useDonnees()
+  const { donnees, modifier, edition } = useDonnees()
   const p = donnees!.patrimoine
   const ind = donnees!.indicateurs.find((i) => i.projet.id === id)
-  const [edition, setEdition] = useState(lireEdition)
   const [modifProjet, setModifProjet] = useState(false)
 
   const niveaux = useMemo(() => p.niveaux.filter((n) => n.projet_id === id).sort((a, b) => a.ordre - b.ordre), [p, id])
@@ -72,22 +70,11 @@ export default function FicheErp() {
     majDetail: (f) => setDetail((d) => (d ? f(d) : d)),
   }
 
-  function basculer() {
-    const v = !edition
-    setEdition(v)
-    try { localStorage.setItem('detb-edition', v ? '1' : '0') } catch { /* stockage indisponible */ }
-  }
-
   return (
     <ContexteFiche.Provider value={fiche}>
       <main className="page">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <Link to="/">← Tableau de bord</Link>
-          <label className={`interrupteur${edition ? ' actif' : ''}`} title="Autorise les modifications sur cette fiche">
-            <input type="checkbox" checked={edition} onChange={basculer} />
-            <span className="glissiere" aria-hidden="true" />
-            Mode modification
-          </label>
         </div>
         {edition && (
           <p className="bandeau-edition">
@@ -108,7 +95,7 @@ export default function FicheErp() {
               <div><dt>Commune déléguée</dt><dd>{pr.commune_deleguee || '—'}</dd></div>
               <div><dt>Code patrimoine</dt><dd>{pr.code || '—'}</dd></div>
               <div><dt>Contact</dt><dd>{pr.contact || '—'}</dd></div>
-              {ind.diagnostic && <div><dt>Classement ERP</dt><dd>{ind.diagnostic.type_erp ? `Type ${ind.diagnostic.type_erp}` : 'Type non renseigné'}{ind.diagnostic.categorie ? ` — ${ind.diagnostic.categorie}e catégorie` : ''}</dd></div>}
+              {ind.diagnostic && <div><dt>Classement ERP</dt><dd>{ind.diagnostic.type_erp ? `Type ${ind.diagnostic.type_erp}${ind.diagnostic.activites_secondaires?.length ? ` (+ ${ind.diagnostic.activites_secondaires.join(', ')})` : ''}` : 'Type non renseigné'}{ind.diagnostic.categorie ? ` — ${ind.diagnostic.categorie}e catégorie` : ''}</dd></div>}
               <div><dt>Dernière mise à jour</dt><dd>{date(ind.derniereMaj)}{pr.maj_par && agents.get(pr.maj_par) ? ` par ${agents.get(pr.maj_par)}` : ''}</dd></div>
             </dl>
           </div>

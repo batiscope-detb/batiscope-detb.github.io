@@ -14,6 +14,15 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.4 (ergonomie et fiche ERP)
+- Interrupteur « Modification » dans la barre du haut, toujours visible.
+- Suppression d'un local avec ses constats et photos (confirmation, propagée aux tablettes).
+- Plan : zoom à la molette et boutons, déplacement de la vue, panneau latéral repliable, export PDF A3 avec cartouche et légende.
+- Fenêtres déplaçables (par le titre) et redimensionnables (coin inférieur droit).
+- Corps d'état et points de contrôle personnalisés, interactions avec d'autres corps d'état (comme sur la tablette).
+- Fiche ERP : activités secondaires, zone de travail (ERT), effectifs public/personnel par niveau et niveau d'accès,
+  aide au calcul de l'effectif des étages (public seul ou public + personnel, au choix de l'agent).
+
 ## Version 0.3 (paramètres, comptes, annotations de plan)
 - **Logo en haut à gauche → Paramètres** : mon compte (nom affiché, mot de passe), apparence (thème clair/sombre,
   taille du texte, mode modification par défaut), **utilisateurs** pour les administrateurs (créer un agent avec un mot

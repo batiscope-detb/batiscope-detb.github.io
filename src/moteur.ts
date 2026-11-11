@@ -28,6 +28,7 @@ export interface Diagnostic {
   enseignement: boolean; restaurant: boolean; contrainte_structurelle: boolean; effectif_etages: number | null
   prestations_hors_rdc: boolean; nb_places_parking: number | null; nb_places_assises: number | null; observations: string | null
   maj_le?: string
+  activites_secondaires?: string[]; zone_ert?: boolean; zone_ert_description?: string | null
 }
 export interface Element {
   id: string; diagnostic_id: string; niveau_id: string | null; sequence: string; element_type: string; libelle: string

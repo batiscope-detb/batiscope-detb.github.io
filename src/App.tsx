@@ -10,10 +10,11 @@ import FicheErp from './pages/FicheErp'
 import Referentiel from './pages/Referentiel'
 import { Notifications } from './composants/Ui'
 import { FormulaireMotDePasse, Parametres, type Moi } from './composants/Parametres'
+import { reglages } from './reglages'
 
 interface Donnees { patrimoine: Patrimoine; indicateurs: IndicateursErp[]; chargeLe: Date }
-interface Ctx { donnees: Donnees | null; erreur: string | null; recharger: () => void; nomAgent: string; modifier: (f: (p: Patrimoine) => Patrimoine) => void }
-const ContexteDonnees = createContext<Ctx>({ donnees: null, erreur: null, recharger: () => {}, nomAgent: '', modifier: () => {} })
+interface Ctx { donnees: Donnees | null; erreur: string | null; recharger: () => void; nomAgent: string; modifier: (f: (p: Patrimoine) => Patrimoine) => void; edition: boolean; role: string }
+const ContexteDonnees = createContext<Ctx>({ donnees: null, erreur: null, recharger: () => {}, nomAgent: '', modifier: () => {}, edition: false, role: 'agent' })
 export const useDonnees = () => useContext(ContexteDonnees)
 
 export default function App() {
@@ -23,6 +24,8 @@ export default function App() {
   const [nomAgent, setNomAgent] = useState('')
   const [profil, setProfil] = useState<{ role: string; actif: boolean } | null | undefined>(undefined)
   const [parametres, setParametres] = useState(false)
+  const [edition, setEdition] = useState(reglages.editionParDefaut)
+  const basculerEdition = () => { const v = !edition; setEdition(v); reglages.definirEdition(v) }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -80,7 +83,7 @@ export default function App() {
 
   const initiales = nomAgent.split(/[\s.@]+/).filter(Boolean).slice(0, 2).map((m) => m[0]?.toUpperCase()).join('')
   return (
-    <ContexteDonnees.Provider value={{ donnees, erreur, recharger, nomAgent, modifier }}>
+    <ContexteDonnees.Provider value={{ donnees, erreur, recharger, nomAgent, modifier, edition, role: profil?.role ?? 'agent' }}>
       <header className="entete">
         <button type="button" className="marque-bouton" onClick={() => setParametres(true)} title="Paramètres : compte, apparence, utilisateurs">
           <img src={`${import.meta.env.BASE_URL}embleme.png`} alt="" />
@@ -91,6 +94,11 @@ export default function App() {
           <NavLink to="/referentiel" className={({ isActive }) => (isActive ? 'actif' : '')}>Référentiel accessibilité</NavLink>
         </nav>
         <div className="compte">
+          <label className={`interrupteur clair${edition ? ' actif' : ''}`} title="Autorise les modifications (fiches, plans, relevés)">
+            <input type="checkbox" checked={edition} onChange={basculerEdition} />
+            <span className="glissiere" aria-hidden="true" />
+            Modification
+          </label>
           {donnees && <span title="Heure du dernier chargement">À jour à {donnees.chargeLe.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
           <button className="lien-clair" onClick={recharger} title="Recharger les données du serveur">Actualiser</button>
           <button type="button" className="pastille" style={{ border: 'none', color: '#fff', cursor: 'pointer' }} title={`${nomAgent} — paramètres`} onClick={() => setParametres(true)}>{initiales || '?'}</button>

@@ -81,7 +81,8 @@ export default function Accessibilite() {
           <div className="entete-bloc"><h2 style={{ margin: 0 }}>Contexte de l'ERP</h2>
             {edition && <span className="actions"><button className="bouton petit" onClick={() => setDlgContexte(true)}>Modifier</button></span>}</div>
           <dl className="infos">
-            <div><dt>Type / catégorie</dt><dd>{d.type_erp ?? '—'} / {d.categorie ? `${d.categorie}e` : '—'}</dd></div>
+            <div><dt>Type / catégorie</dt><dd>{d.type_erp ?? '—'}{d.activites_secondaires?.length ? ` (+ ${d.activites_secondaires.join(', ')})` : ''} / {d.categorie ? `${d.categorie}e` : '—'}</dd></div>
+            {d.zone_ert && <div><dt>Zone de travail (ERT)</dt><dd>{d.zone_ert_description || 'Oui'}</dd></div>}
             <div><dt>Mission de service public</dt><dd>{d.mission_service_public ? 'Oui' : 'Non'}</dd></div>
             <div><dt>Effectif admis aux étages</dt><dd>{d.effectif_etages ?? '—'}</dd></div>
             <div><dt>Prestations uniquement en étage</dt><dd>{d.prestations_hors_rdc ? 'Oui' : 'Non'}</dd></div>
@@ -277,7 +278,21 @@ function DialogueContexte({ ouvert, fermer }: { ouvert: boolean; fermer: () => v
   const d = f.ind.diagnostic
   const [v, setV] = useState<Record<string, string | boolean>>({})
   const lire = (k: keyof Diagnostic, defaut: string | boolean) => (k in v ? v[k] : d ? (typeof defaut === 'boolean' ? !!d[k] : d[k] == null ? '' : String(d[k])) : defaut)
-  const fin = () => { setV({}); fermer() }
+  const [activites, setActivites] = useState<string[] | null>(null)
+  const listeActivites = activites ?? d?.activites_secondaires ?? []
+  const [nouvelleActivite, setNouvelleActivite] = useState('')
+  const fin = () => { setV({}); setActivites(null); setNouvelleActivite(''); fermer() }
+  // Effectif des étages calculé à partir des effectifs saisis par niveau (onglet « Niveaux et locaux »).
+  const accParNiveau = new Map(f.p.accNiveaux.map((a) => [a.niveau_id, a]))
+  const etages = f.niveaux.map((n) => accParNiveau.get(n.id)).filter((a) => a && !a.niveau_acces && (a.effectif_public != null || a.effectif_personnel != null))
+  const niveauAccesConnu = f.niveaux.some((n) => accParNiveau.get(n.id)?.niveau_acces)
+  const totalPublic = etages.reduce((t, a) => t + (a!.effectif_public ?? 0), 0)
+  const totalTous = etages.reduce((t, a) => t + (a!.effectif_public ?? 0) + (a!.effectif_personnel ?? 0), 0)
+  const ajouterActivite = () => {
+    const t = nouvelleActivite.trim().toUpperCase()
+    if (!t || listeActivites.includes(t) || t === String(lire('type_erp', '')).toUpperCase()) { setNouvelleActivite(''); return }
+    setActivites([...listeActivites, t]); setNouvelleActivite('')
+  }
   const entier = (k: keyof Diagnostic) => { const t = String(lire(k, '')).trim(); return t ? Math.max(0, Math.round(Number(t))) || 0 : null }
 
   async function valider() {
@@ -289,6 +304,8 @@ function DialogueContexte({ ouvert, fermer }: { ouvert: boolean; fermer: () => v
       contrainte_structurelle: !!lire('contrainte_structurelle', false), prestations_hors_rdc: !!lire('prestations_hors_rdc', false),
       effectif_etages: entier('effectif_etages'), nb_places_parking: entier('nb_places_parking'), nb_places_assises: entier('nb_places_assises'),
       observations: String(lire('observations', '')).trim() || null,
+      activites_secondaires: listeActivites, zone_ert: !!lire('zone_ert', false),
+      zone_ert_description: lire('zone_ert', false) ? String(lire('zone_ert_description', '')).trim() || null : null,
     }
     const r = await executer(() => d
       ? ecrire('accessibilite', 'diagnostic', ligne, { cle: { id: d.id }, majLeConnue: d.maj_le ?? null })
@@ -310,16 +327,43 @@ function DialogueContexte({ ouvert, fermer }: { ouvert: boolean; fermer: () => v
         <Champ libelle="Type (W, R, L…)"><input className="champ" maxLength={3} value={String(lire('type_erp', ''))} onChange={(e) => setV((x) => ({ ...x, type_erp: e.target.value.toUpperCase() }))} /></Champ>
         {nombre('categorie', 'Catégorie (1 à 5)')}
       </div>
+      <div className="champ-form"><span>Activités secondaires (autres types)</span>
+        <div className="boutons-ligne">
+          {listeActivites.map((a) => (
+            <span key={a} className="etiquette e-bleu puce">{a}
+              <button type="button" aria-label={`Retirer l'activité ${a}`} onClick={() => setActivites(listeActivites.filter((x) => x !== a))}>×</button></span>
+          ))}
+          <input className="champ petit" style={{ width: 90 }} maxLength={4} placeholder="ex. N" value={nouvelleActivite} aria-label="Ajouter une activité secondaire"
+            onChange={(e) => setNouvelleActivite(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ajouterActivite() } }} onBlur={ajouterActivite} />
+        </div>
+        <small>Le type principal fixe les règles ; la catégorie dépend de l'effectif total de toutes les activités.</small>
+      </div>
       {caseA('mission_service_public', 'Mission de service public', true)}
       {caseA('enseignement', "Établissement d'enseignement", false)}
       {caseA('restaurant', 'Restaurant / débit de boissons', false)}
       {caseA('contrainte_structurelle', 'Contrainte structurelle (éléments porteurs)', false)}
       {caseA('prestations_hors_rdc', 'Prestations offertes uniquement en étage', false)}
+      {caseA('zone_ert', 'Le bâtiment comporte aussi une zone de travail (ERT) non ouverte au public', false)}
+      {lire('zone_ert', false) && (
+        <Champ libelle="Parties réservées au personnel" aide="Ces parties relèvent du Code du travail et non des règles ERP ; elles sont exclues du diagnostic et signalées dans la notice.">
+          <input className="champ" value={String(lire('zone_ert_description', ''))} placeholder="ex. bureaux administratifs du 1er étage, ateliers"
+            onChange={(e) => setV((x) => ({ ...x, zone_ert_description: e.target.value }))} />
+        </Champ>
+      )}
       <div className="grille-3">
         {nombre('effectif_etages', 'Effectif admis aux étages')}
         {nombre('nb_places_parking', 'Places de stationnement public')}
         {nombre('nb_places_assises', 'Places assises (public assis)')}
       </div>
+      {etages.length > 0 && (
+        <div className="aide-prep" style={{ fontSize: 12 }}>
+          Effectifs saisis sur les niveaux{niveauAccesConnu ? ' (hors niveau d’accès)' : ' — indiquez le niveau d’accès dans « Niveaux et locaux »'} :
+          public <b>{totalPublic}</b>, public + personnel <b>{totalTous}</b>.{' '}
+          <button type="button" className="lien-photo" onClick={() => setV((x) => ({ ...x, effectif_etages: String(totalPublic) }))}>Retenir le public seul</button>{' · '}
+          <button type="button" className="lien-photo" onClick={() => setV((x) => ({ ...x, effectif_etages: String(totalTous) }))}>Retenir public + personnel</button>
+          <div style={{ marginTop: 4 }}>Le texte (« effectif admis aux étages ») ne tranche pas : les guides départementaux diffèrent. À vous de retenir l'effectif applicable.</div>
+        </div>
+      )}
       <Champ libelle="Observations"><textarea className="champ" rows={3} value={String(lire('observations', ''))} onChange={(e) => setV((x) => ({ ...x, observations: e.target.value }))} /></Champ>
     </Dialogue>
   )

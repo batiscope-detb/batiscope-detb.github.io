@@ -44,10 +44,13 @@ export function Dialogue({ titre, ouvert, fermer, valider, children, libelleVali
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const [enCours, setEnCours] = useState(false)
+  // Fenêtre déplaçable en la tirant par son titre (position remise au centre à chaque ouverture).
+  const [decalage, setDecalage] = useState({ x: 0, y: 0 })
+  const tire = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
   useEffect(() => {
     const d = ref.current
     if (!d) return
-    if (ouvert && !d.open) d.showModal()
+    if (ouvert && !d.open) { setDecalage({ x: 0, y: 0 }); d.style.width = ''; d.style.height = ''; d.showModal() }
     if (!ouvert && d.open) d.close()
   }, [ouvert])
   async function soumettre(e: FormEvent) {
@@ -57,10 +60,14 @@ export function Dialogue({ titre, ouvert, fermer, valider, children, libelleVali
     try { await valider() } finally { setEnCours(false) }
   }
   return (
-    <dialog ref={ref} className={`dialogue${large ? ' large' : ''}`} onClose={fermer} onCancel={fermer}>
+    <dialog ref={ref} className={`dialogue${large ? ' large' : ''}`} onClose={fermer} onCancel={fermer}
+      style={{ transform: `translate(${decalage.x}px, ${decalage.y}px)` }}>
       {ouvert && (
         <form onSubmit={soumettre}>
-          <h2>{titre}</h2>
+          <h2 className="poignee" title="Faites glisser pour déplacer la fenêtre"
+            onPointerDown={(e) => { if (e.button !== 0) return; e.currentTarget.setPointerCapture(e.pointerId); tire.current = { x: e.clientX, y: e.clientY, ox: decalage.x, oy: decalage.y } }}
+            onPointerMove={(e) => { const t = tire.current; if (t) setDecalage({ x: t.ox + e.clientX - t.x, y: t.oy + e.clientY - t.y }) }}
+            onPointerUp={() => { tire.current = null }} onDoubleClick={() => setDecalage({ x: 0, y: 0 })}>{titre}</h2>
           <div className="dialogue-corps">{children}</div>
           <div className="dialogue-actions">
             {danger && <button type="button" className="bouton danger" disabled={enCours} style={{ marginRight: 'auto' }}

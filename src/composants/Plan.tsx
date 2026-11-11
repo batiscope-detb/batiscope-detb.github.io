@@ -30,6 +30,57 @@ export function Plan({ url, page, reperes, surClic, surDeplacement, surChoix, se
   const [etat, setEtat] = useState<'chargement' | 'ok' | 'erreur'>('chargement')
   const [ratio, setRatio] = useState(1)
   const [glisse, setGlisse] = useState<{ id: string; x: number; y: number; depart: [number, number]; bouge: boolean } | null>(null)
+  // Zoom (molette) et déplacement de la vue (cliquer-glisser sur le plan).
+  const vue = useRef<HTMLDivElement>(null)
+  const [zoom, setZoom] = useState({ z: 1, x: 0, y: 0 })
+  const pan = useRef<{ x: number; y: number; ox: number; oy: number; bouge: boolean } | null>(null)
+  const avalerClic = useRef(false)
+
+  useEffect(() => {
+    const v = vue.current
+    if (!v) return
+    // Écouteur natif non passif : la molette zoome le plan au lieu de faire défiler la page.
+    const molette = (e: WheelEvent) => {
+      e.preventDefault()
+      const r = v.getBoundingClientRect()
+      const px = e.clientX - r.left, py = e.clientY - r.top
+      setZoom((o) => {
+        const z = Math.min(8, Math.max(1, o.z * Math.exp(-e.deltaY * 0.0015)))
+        if (z === 1) return { z: 1, x: 0, y: 0 }
+        return { z, x: px - ((px - o.x) * z) / o.z, y: py - ((py - o.y) * z) / o.z }
+      })
+    }
+    v.addEventListener('wheel', molette, { passive: false })
+    return () => v.removeEventListener('wheel', molette)
+  }, [etat])
+  useEffect(() => { setZoom({ z: 1, x: 0, y: 0 }) }, [url, page])
+
+  function zoomer(f: number) {
+    const v = vue.current
+    if (!v) return
+    const px = v.clientWidth / 2, py = v.clientHeight / 2
+    setZoom((o) => {
+      const z = Math.min(8, Math.max(1, o.z * f))
+      return z === 1 ? { z: 1, x: 0, y: 0 } : { z, x: px - ((px - o.x) * z) / o.z, y: py - ((py - o.y) * z) / o.z }
+    })
+  }
+  function panDebut(e: PE<HTMLDivElement>) {
+    if (zoom.z === 1 || (e.button !== 0 && e.button !== 1)) return
+    if ((e.target as Element).closest('.calque-annotations.pose, .repere, .annotation')) return
+    pan.current = { x: e.clientX, y: e.clientY, ox: zoom.x, oy: zoom.y, bouge: false }
+  }
+  function panMouvement(e: PE<HTMLDivElement>) {
+    const p = pan.current
+    if (!p) return
+    const dx = e.clientX - p.x, dy = e.clientY - p.y
+    if (!p.bouge && Math.hypot(dx, dy) < 5) return
+    if (!p.bouge) { p.bouge = true; e.currentTarget.setPointerCapture(e.pointerId) }
+    setZoom((o) => ({ ...o, x: p.ox + dx, y: p.oy + dy }))
+  }
+  function panFin() {
+    if (pan.current?.bouge) avalerClic.current = true
+    pan.current = null
+  }
 
   useEffect(() => {
     let annule = false
@@ -79,18 +130,29 @@ export function Plan({ url, page, reperes, surClic, surDeplacement, surChoix, se
     <div>
       {etat === 'chargement' && <div className="chargement" style={{ padding: 30 }}><span className="roue" />Chargement du plan…</div>}
       {etat === 'erreur' && <p className="erreur">Le plan n'a pas pu être affiché.</p>}
-      <div ref={cadre} className={`plan${viseur ? ' viseur' : ''}`} style={{ display: etat === 'ok' ? 'inline-block' : 'none' }}
-        onClick={(e) => surClic && etat === 'ok' && surClic(...relatif(e))}>
-        <canvas ref={canvas} />
-        {etat === 'ok' && superposition?.(ratio)}
-        {reperes.map((r) => {
-          const g = glisse?.id === r.id ? glisse : null
-          return (
-            <span key={r.id} className={`repere${r.acc ? ' acc' : ''}${selection === r.id ? ' choisi' : ''}${surDeplacement ? ' mobile' : ''}`} title={r.titre}
-              style={{ left: `${(g?.x ?? r.x) * 100}%`, top: `${(g?.y ?? r.y) * 100}%`, background: r.couleur }}
-              onPointerDown={(e) => debut(e, r)} onPointerMove={mouvement} onPointerUp={fin} onClick={(e) => e.stopPropagation()}>{r.texte}</span>
-          )
-        })}
+      <div ref={vue} className={`plan-vue${zoom.z > 1 ? ' zoome' : ''}`} style={{ display: etat === 'ok' ? 'block' : 'none' }}
+        onPointerDown={panDebut} onPointerMove={panMouvement} onPointerUp={panFin} onPointerCancel={panFin}
+        onClickCapture={(e) => { if (avalerClic.current) { avalerClic.current = false; e.stopPropagation(); e.preventDefault() } }}>
+        <div ref={cadre} className={`plan${viseur ? ' viseur' : ''}`}
+          style={{ transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.z})`, ['--zoom' as string]: zoom.z }}
+          onClick={(e) => surClic && etat === 'ok' && surClic(...relatif(e))}>
+          <canvas ref={canvas} />
+          {etat === 'ok' && superposition?.(ratio)}
+          {reperes.map((r) => {
+            const g = glisse?.id === r.id ? glisse : null
+            return (
+              <span key={r.id} className={`repere${r.acc ? ' acc' : ''}${selection === r.id ? ' choisi' : ''}${surDeplacement ? ' mobile' : ''}`} title={r.titre}
+                style={{ left: `${(g?.x ?? r.x) * 100}%`, top: `${(g?.y ?? r.y) * 100}%`, background: r.couleur }}
+                onPointerDown={(e) => debut(e, r)} onPointerMove={mouvement} onPointerUp={fin} onClick={(e) => e.stopPropagation()}>{r.texte}</span>
+            )
+          })}
+        </div>
+        <div className="zoom-commandes" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <button type="button" onClick={() => zoomer(1.4)} aria-label="Zoomer" title="Zoomer (molette)">+</button>
+          <button type="button" onClick={() => zoomer(1 / 1.4)} aria-label="Dézoomer" title="Dézoomer (molette)">−</button>
+          <button type="button" onClick={() => setZoom({ z: 1, x: 0, y: 0 })} disabled={zoom.z === 1} aria-label="Plan entier" title="Plan entier">⤢</button>
+          {zoom.z > 1 && <span>{Math.round(zoom.z * 100)} %</span>}
+        </div>
       </div>
     </div>
   )

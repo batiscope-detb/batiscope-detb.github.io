@@ -30,6 +30,8 @@ export default function Plans() {
   const [panneau, setPanneau] = useState<'symboles' | 'reperes'>('symboles')
   const [ongletFamille, setOngletFamille] = useState(FAMILLES[0].id)
   const [visibles, setVisibles] = useState<Set<string>>(lireCalques)
+  const [replie, setReplie] = useState(() => { try { return localStorage.getItem('detb-panneau-replie') === '1' } catch { return false } })
+  const replier = (v: boolean) => { setReplie(v); try { localStorage.setItem('detb-panneau-replie', v ? '1' : '0') } catch { /* rien */ } }
   const rendu = useRef<HTMLCanvasElement | null>(null)
 
   // Échap : abandonne l'outil ; Suppr : retire l'annotation sélectionnée.
@@ -169,14 +171,21 @@ export default function Plans() {
         ctx.fillStyle = rp.acc ? '#1B1B3D' : '#fff'; ctx.font = `700 ${rayon}px Inter, Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
         ctx.fillText(rp.texte, x, y + 1)
       }
-      const blob = await new Promise<Blob>((ok, ko) => sortie.toBlob((b) => (b ? ok(b) : ko(new Error('Export impossible'))), 'image/png'))
+      const png = await new Promise<Blob>((ok, ko) => sortie.toBlob((b) => (b ? ok(b) : ko(new Error('Export impossible'))), 'image/png'))
+      const { exporterPlanPdf } = await import('../../exportPlan')
+      const pdf = await exporterPlanPdf({
+        image: png, largeur: sortie.width, hauteur: sortie.height,
+        titre: ind.projet.nom, sousTitre: [niv.libelle, ind.projet.adresse].filter(Boolean).join(' — '),
+        symboles: utilises.map((sy) => ({ symbole: sy, nombre: annotations.filter((x) => x.type === sy.id).length })),
+        reperes: visibles.has('reperes') ? marqueurs.slice().sort((m1, m2) => m1.numero - m2.numero).map((m) => ({ numero: m.numero, libelle: localParId.get(m.local_id)?.libelle ?? '—', couleur: couleurEtat(localParId.get(m.local_id)?.etat_general) })) : [],
+      })
       const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `Plan_${ind.projet.nom}_${niv.libelle}.png`.replace(/[\\/:*?"<>|]/g, '-')
+      a.href = URL.createObjectURL(pdf)
+      a.download = `Plan_${ind.projet.nom}_${niv.libelle}.pdf`.replace(/[\\/:*?"<>|]/g, '-')
       a.click()
       setTimeout(() => URL.revokeObjectURL(a.href), 2000)
       return true
-    }, 'Image du plan enregistrée dans vos téléchargements')
+    }, 'Plan annoté enregistré en PDF dans vos téléchargements')
     void r
   }
 
@@ -193,7 +202,7 @@ export default function Plans() {
             {niveaux.map((n) => <option key={n.id} value={n.id}>{n.libelle}{detail.plans.some((p) => p.niveau_id === n.id && p.storage_path) ? '' : ' (sans plan)'}</option>)}
           </select>
         </label>
-        {plan && <button className="bouton" style={{ alignSelf: 'flex-end' }} onClick={exporterImage}>Exporter le plan annoté (image)</button>}
+        {plan && <button className="bouton" style={{ alignSelf: 'flex-end' }} onClick={exporterImage}>Exporter le plan annoté (PDF)</button>}
       </div>
       {plan && (
         <div className="calques" role="group" aria-label="Calques affichés">
@@ -208,7 +217,7 @@ export default function Plans() {
       )}
 
       {!plan ? <p className="vide">Pas de plan pour ce niveau. Importez-le dans l'onglet <Link to="?onglet=batiment">Niveaux et locaux</Link>.</p> : (
-        <div className="plan-edition">
+        <div className={`plan-edition${replie && !annSel ? ' replie' : ''}`}>
           <div>
             {outil && <p className="bandeau-placement"><IconeSymbole s={outil} taille={22} />
               {outil.geometrie === 'symbole' || outil.geometrie === 'point' ? `Cliquez sur le plan pour poser « ${outil.nom} » (autant de fois que nécessaire).`
@@ -233,7 +242,13 @@ export default function Plans() {
             ) : <div className="chargement"><span className="roue" />Préparation du plan…</div>}
           </div>
 
+          {replie && !annSel ? (
+            <button type="button" className="panneau-replie" onClick={() => replier(false)} title="Afficher le panneau" aria-label="Afficher le panneau des symboles et repères">
+              <span aria-hidden="true">‹</span><span className="vertical">{edition ? 'Symboles et repères' : 'Légende'}</span>
+            </button>
+          ) : (
           <aside className="carte panneau-plan">
+            {!annotationChoisie && <button type="button" className="replier" onClick={() => replier(true)} title="Réduire le panneau" aria-label="Réduire le panneau">›</button>}
             {annotationChoisie ? (
               <FicheAnnotation key={annotationChoisie.id} a={annotationChoisie} edition={edition} fermer={() => setAnnSel(null)} modifier={(p) => modifierAnnotation(annotationChoisie, p)}
                 supprimer={() => supprimerAnnotation(annotationChoisie.id)}
@@ -261,6 +276,7 @@ export default function Plans() {
               </div>
             )}
           </aside>
+          )}
         </div>
       )}
 

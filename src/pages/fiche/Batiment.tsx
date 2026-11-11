@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { BUCKETS, fusionner, type Local, type Niveau } from '../../donnees'
+import { BUCKETS, fusionner, type AccNiveau, type Local, type Niveau } from '../../donnees'
 import { deposerFichier, ecrire, nombrePages, preparerPlan, supprimer } from '../../ecriture'
 import { nouvelId } from '../../ids'
 import { BoutonFichier, Champ, Dialogue, executer, signaler } from '../../composants/Ui'
@@ -44,10 +44,13 @@ export default function Batiment() {
     setDlgNiveau(null)
   }
 
-  async function basculerFauteuil(n: Niveau, v: boolean) {
-    const r = await executer(() => ecrire('accessibilite', 'acc_niveau', { accessible_fauteuil: v, supprime_le: null }, { cle: { niveau_id: n.id } }))
+  /** Données accessibilité du niveau (fauteuil, effectifs, niveau d'accès) : une seule ligne par niveau. */
+  async function majAccNiveau(n: Niveau, patch: Partial<AccNiveau>) {
+    const actuel = p.accNiveaux.find((a) => a.niveau_id === n.id)
+    const r = await executer(() => ecrire('accessibilite', 'acc_niveau', { accessible_fauteuil: actuel?.accessible_fauteuil ?? false, ...patch, supprime_le: null }, { cle: { niveau_id: n.id } }))
     if (r) modifier((pp) => ({ ...pp, accNiveaux: fusionner(pp.accNiveaux, r, (y) => y.niveau_id) }))
   }
+  const basculerFauteuil = (n: Niveau, v: boolean) => majAccNiveau(n, { accessible_fauteuil: v })
 
   // --- Plans ------------------------------------------------------------------------------------
   async function choisirPlan(n: Niveau, fichier: File) {
@@ -125,12 +128,13 @@ export default function Batiment() {
                 </span>
               )}
             </div>
+            {n && <EffectifsNiveau acc={p.accNiveaux.find((a) => a.niveau_id === n.id)} edition={edition} enregistrer={(patch) => majAccNiveau(n, patch)} />}
             {ls.length > 0 && (
               <table className="tableau" style={{ marginTop: 10 }}>
                 <thead><tr><th>Local</th><th>Type</th><th>État général</th><th className="num">Constats</th>{edition && <th />}</tr></thead>
                 <tbody>{ls.map((l) => (
                   <tr key={l.id}>
-                    <td>{l.libelle}</td><td>{l.type ?? '—'}</td>
+                    <td>{l.libelle}{l.reserve_personnel && <span className="etiquette e-gris" style={{ marginLeft: 6 }} title="Réservé au personnel : hors parties ouvertes au public">ERT</span>}</td><td>{l.type ?? '—'}</td>
                     <td>{l.etat_general != null ? <span className="etiquette" style={{ background: couleurEtat(l.etat_general), color: '#fff' }}>{l.etat_general}/10</span> : '—'}</td>
                     <td className="num">{nbConstats(l.id) || '—'}</td>
                     {edition && <td style={{ textAlign: 'right' }}><button className="bouton petit" onClick={() => setDlgLocal(l)}>Modifier</button></td>}
@@ -216,7 +220,7 @@ function DialogueLocal({ local, fermer }: { local: Local | null; fermer: () => v
   async function valider() {
     if (!local || !val.libelle?.trim()) return signaler('Indiquez le nom du local.', 'erreur')
     const r = await executer(() => ecrire('releves', 'local', {
-      libelle: val.libelle.trim(), type: val.type || null, niveau_id: val.niveau_id || null, etat_general: val.etat_general ?? null,
+      libelle: val.libelle.trim(), type: val.type || null, niveau_id: val.niveau_id || null, etat_general: val.etat_general ?? null, reserve_personnel: !!val.reserve_personnel,
     }, { cle: { id: local.id }, majLeConnue: local.maj_le ?? null }), 'Local enregistré')
     if (!r) return
     // Changement de niveau : le repère posé sur l'ancien plan n'a plus de sens.
@@ -230,15 +234,21 @@ function DialogueLocal({ local, fermer }: { local: Local | null; fermer: () => v
   }
   async function supprimerLocal() {
     if (!local) return
-    if (constats.some((c) => c.local_id === local.id)) return signaler('Ce local a des constats : supprimez-les d’abord dans l’onglet « Relevés ».', 'erreur')
-    if (!window.confirm(`Supprimer le local « ${local.libelle} » ?`)) return
+    const cs = constats.filter((c) => c.local_id === local.id)
+    const photos = detail?.photosReleves.filter((x) => cs.some((c) => c.id === x.constat_id)) ?? []
+    const detailTexte = cs.length ? `\n\nSeront aussi supprimés : ${cs.length} constat${cs.length > 1 ? 's' : ''}${photos.length ? ` et ${photos.length} photo${photos.length > 1 ? 's' : ''}` : ''}.` : ''
+    if (!window.confirm(`Supprimer le local « ${local.libelle} » ?${detailTexte}\n\nLa suppression sera aussi faite sur les tablettes à leur prochaine synchronisation.`)) return
+    // Les constats d'abord (avec leurs photos), puis le repère, puis le local : rien ne reste orphelin.
+    for (const c of cs) {
+      for (const ph of photos.filter((x) => x.constat_id === c.id)) await executer(() => supprimer('releves', 'photo', { id: ph.id }))
+      if (!(await executer(() => supprimer('releves', 'constat', { id: c.id }, c.maj_le)))) return
+    }
+    for (const m of detail?.marqueurs.filter((x) => x.local_id === local.id) ?? []) await executer(() => supprimer('releves', 'marqueur_local', { id: m.id }))
     const r = await executer(() => supprimer('releves', 'local', { id: local.id }, local.maj_le ?? null), 'Local supprimé')
     if (!r) return
-    for (const m of detail?.marqueurs.filter((x) => x.local_id === local.id) ?? []) {
-      await executer(() => supprimer('releves', 'marqueur_local', { id: m.id }))
-      majDetail((d) => ({ ...d, marqueurs: d.marqueurs.filter((x) => x.id !== m.id) }))
-    }
-    modifier((pp) => ({ ...pp, locaux: pp.locaux.filter((x) => x.id !== local.id) }))
+    const idsConstats = new Set(cs.map((c) => c.id))
+    majDetail((d) => ({ ...d, marqueurs: d.marqueurs.filter((x) => x.local_id !== local.id), photosReleves: d.photosReleves.filter((x) => !idsConstats.has(x.constat_id)) }))
+    modifier((pp) => ({ ...pp, locaux: pp.locaux.filter((x) => x.id !== local.id), constats: pp.constats.filter((x) => !idsConstats.has(x.id)) }))
     fin()
   }
   const types = p.typesLocaux.map((t) => t.libelle)
@@ -257,11 +267,47 @@ function DialogueLocal({ local, fermer }: { local: Local | null; fermer: () => v
           </select>
         </Champ>
       </div>
+      <label className="case"><input type="checkbox" checked={!!val.reserve_personnel} onChange={(e) => setV((x) => ({ ...x, reserve_personnel: e.target.checked }))} />
+        Réservé au personnel (zone de travail, ERT) : hors des parties ouvertes au public</label>
       <Champ libelle="État général" aide="Note de 1 (très mauvais) à 10 (très bon), comme sur la tablette.">
         <select className="champ" value={val.etat_general ?? ''} onChange={(e) => setV((x) => ({ ...x, etat_general: e.target.value ? Number(e.target.value) : null }))}>
           <option value="">Non évalué</option>{Array.from({ length: 10 }, (_, k) => <option key={k + 1} value={k + 1}>{k + 1}/10</option>)}
         </select>
       </Champ>
     </Dialogue>
+  )
+}
+
+/** Effectifs admis sur le niveau (public et personnel séparés) et niveau d'accès au bâtiment. */
+function EffectifsNiveau({ acc, edition, enregistrer }: { acc?: AccNiveau; edition: boolean; enregistrer: (p: Partial<AccNiveau>) => void }) {
+  const [pub, setPub] = useState<string | null>(null)
+  const [pers, setPers] = useState<string | null>(null)
+  const lire = (t: string) => (t.trim() ? Math.max(0, Math.round(Number(t.replace(/\D/g, '')))) : null)
+  if (!edition) {
+    if (acc?.effectif_public == null && acc?.effectif_personnel == null && !acc?.niveau_acces) return null
+    return (
+      <p className="effectifs">
+        {acc?.niveau_acces && <span className="etiquette e-bleu">Niveau d'accès</span>}
+        {acc?.effectif_public != null && <span>Public : <b>{acc.effectif_public}</b></span>}
+        {acc?.effectif_personnel != null && <span>Personnel : <b>{acc.effectif_personnel}</b></span>}
+      </p>
+    )
+  }
+  const valider = (texte: string | null, cle: 'effectif_public' | 'effectif_personnel', reset: () => void) => {
+    if (texte == null) return
+    const v = lire(texte)
+    reset()
+    if (v !== (acc?.[cle] ?? null)) enregistrer({ [cle]: v })
+  }
+  return (
+    <div className="effectifs">
+      <label className="case"><input type="checkbox" checked={!!acc?.niveau_acces} onChange={(e) => enregistrer({ niveau_acces: e.target.checked })} /> Niveau d'accès (rez-de-chaussée)</label>
+      <label className="case">Effectif public
+        <input className="champ petit" inputMode="numeric" style={{ width: 80 }} value={pub ?? acc?.effectif_public ?? ''} onChange={(e) => setPub(e.target.value)}
+          onBlur={() => valider(pub, 'effectif_public', () => setPub(null))} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} /></label>
+      <label className="case">Effectif personnel
+        <input className="champ petit" inputMode="numeric" style={{ width: 80 }} value={pers ?? acc?.effectif_personnel ?? ''} onChange={(e) => setPers(e.target.value)}
+          onBlur={() => valider(pers, 'effectif_personnel', () => setPers(null))} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} /></label>
+    </div>
   )
 }
