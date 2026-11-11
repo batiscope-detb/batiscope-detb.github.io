@@ -3,6 +3,7 @@ import { travauxParLot } from '../../calculs'
 import { BarreConformite } from '../../composants/Barres'
 import { Link } from 'react-router-dom'
 import { useFiche } from './contexte'
+import CycleVie from './CycleVie'
 
 export default function Synthese() {
   const { ind, constats, p } = useFiche()
@@ -17,6 +18,7 @@ export default function Synthese() {
           <Link className={`bouton${ind.diagnostic ? '' : ' inactif'}`} to={ind.diagnostic ? `/notice/${ind.projet.id}` : '#'} aria-disabled={!ind.diagnostic}>Notice d'accessibilité (AT)</Link>
         </div>
       </section>
+      <CycleVie />
       <>
         <section className="grille-kpi">
           <div className="kpi"><span>Niveaux / locaux</span><b>{ind!.nbNiveaux} / {ind!.nbLocaux}</b></div>

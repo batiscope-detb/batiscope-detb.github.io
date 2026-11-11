@@ -395,3 +395,6 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
   .couverture { min-height: 262mm; }
 }
 @media screen and (max-width: 800px) { .rapport { padding: 16px; } .kpi-rapport { grid-template-columns: repeat(2, 1fr); } }
+.etapes-archive { margin: 6px 0 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.etapes-archive li div { margin-top: 4px; }
+.etapes-archive li.faite { color: var(--encre-2); }

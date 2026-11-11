@@ -17,7 +17,7 @@ export const supabase = createClient(SUPABASE_URL, CLE_PUBLIABLE, {
 export type StatutErp = 'diagnostic' | 'programme' | 'travaux' | 'atteste' | 'archive'
 export interface Projet {
   id: string; nom: string; adresse: string | null; contact: string | null; code: string | null; commune_deleguee: string | null
-  photo_path: string | null; statut: StatutErp; date_statut: string | null; archive_nom: string | null; archive_le: string | null
+  photo_path: string | null; statut: StatutErp; date_statut: string | null; archive_nom: string | null; archive_le: string | null; archive_sha256?: string | null; archive_par?: string | null
   cree_le: string; maj_le: string; recu_le: string; maj_par: string | null
 }
 export interface Niveau { id: string; projet_id: string; libelle: string; ordre: number; maj_le?: string }
