@@ -6,7 +6,7 @@
   --entete: #2E2B57; --repere: #2E2B57; --ct: #1F6B55; --ct-pale: #E3F1EC; --travaux: #5B3B9A; --travaux-pale: #EEE7FA; --texte-pale-ambre: #5E4300; --texte-pale-bleu: #183F6E;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="sepia"]) {
   --encre: #ECEAF7; --encre-2: #B4B1CC; --violet: #CFC9F5; --violet-2: #8D88BD; --violet-3: #C2BCEC;
   --or: #E0A93A; --fond: #14132A; --carte: #1E1C38; --bord: #35325B; --bord-2: #4A4774; --pale: #2A2850;
   --vert: #7BC47F; --vert-pale: #1F3A25; --rouge: #F08A80; --rouge-pale: #44201F; --ambre: #E8B85A; --ambre-pale: #3D3015;
@@ -22,6 +22,17 @@
   --entete: #0E0D22; --ct: #8FD3BC; --ct-pale: #1D3A33; --travaux: #CDB8F2; --travaux-pale: #2F2650; --texte-pale-ambre: #F2D9A0; --texte-pale-bleu: #BFD6F5;
   color-scheme: dark;
 }
+:root[data-theme="sepia"] {
+  /* Sépia : papier crème et encre brune, contraste adouci (lecture prolongée, comme une liseuse). */
+  --encre: #3B2F24; --encre-2: #6B5A47; --violet: #4E2C46; --violet-2: #7E6574; --violet-3: #6A3D5F;
+  --or: #A0701C; --fond: #F4ECD8; --carte: #FBF6EA; --bord: #E4D8BF; --bord-2: #CDBE9F; --pale: #EEE3CB;
+  --vert: #4B6B2C; --vert-pale: #E5E6C9; --rouge: #9C3A24; --rouge-pale: #F2D9C6; --ambre: #855A0E; --ambre-pale: #F1E0BC;
+  --bleu: #39607E; --bleu-pale: #E0E1D4; --gris-pale: #EBE2CD;
+  --entete: #4A3B2E; --repere: #4E2C46; --ct: #3E634D; --ct-pale: #DFE4CF; --travaux: #6A4878; --travaux-pale: #ECDFDF; --texte-pale-ambre: #5A3F08; --texte-pale-bleu: #2C4559;
+  color-scheme: light;
+}
+:root[data-theme="sepia"] body { font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif; font-size: 15px; }
+:root[data-theme="sepia"] .champ, :root[data-theme="sepia"] input, :root[data-theme="sepia"] textarea, :root[data-theme="sepia"] select { background: #FFFDF6; }
 :root[data-taille="grand"] body { zoom: 1.12; }
 :root[data-taille="tres-grand"] body { zoom: 1.25; }
 * { box-sizing: border-box; }
@@ -147,7 +158,7 @@ details.bloc > div { padding: 0 16px 14px; }
 .connexion img { height: 64px; align-self: center; }
 .connexion img.logo-connexion { height: 96px; }
 .connexion h1 { color: #400241; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .connexion h1 { color: var(--violet); } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="sepia"]) .connexion h1 { color: var(--violet); } }
 :root[data-theme="dark"] .connexion h1 { color: var(--violet); }
 .connexion label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--encre-2); }
 .connexion .champ { width: 100%; }

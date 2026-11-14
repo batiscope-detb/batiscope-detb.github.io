@@ -104,6 +104,7 @@ function Apparence() {
           {choix('theme', 'systeme', theme, 'Comme Windows', (v) => { setTheme(v); reglages.definirTheme(v) })}
           {choix('theme', 'clair', theme, 'Clair', (v) => { setTheme(v); reglages.definirTheme(v) })}
           {choix('theme', 'sombre', theme, 'Sombre', (v) => { setTheme(v); reglages.definirTheme(v) })}
+          {choix('theme', 'sepia', theme, 'Sépia (liseuse)', (v) => { setTheme(v); reglages.definirTheme(v) })}
         </div>
       </fieldset>
       <fieldset className="cadre-param"><legend>Taille du texte</legend>
