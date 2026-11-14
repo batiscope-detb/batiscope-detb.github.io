@@ -18,9 +18,9 @@ export default function Connexion() {
   return (
     <div className="connexion">
       <form onSubmit={valider}>
-        <img src={`${import.meta.env.BASE_URL}logo-detb.png`} alt="Direction Études et Travaux Bâtiments" />
-        <h1 style={{ textAlign: 'center', fontSize: 20 }}>Batiscope</h1>
-        <p className="sous-titre" style={{ textAlign: 'center', marginTop: -6 }}>Même compte que sur la tablette</p>
+        <img src={`${import.meta.env.BASE_URL}batiscope.svg`} alt="" className="logo-connexion" />
+        <h1 style={{ textAlign: 'center', fontSize: 26, margin: 0, letterSpacing: -0.5 }}>Batiscope</h1>
+        <p className="sous-titre" style={{ textAlign: 'center', margin: '-8px 0 0' }}>Relevés et accessibilité des bâtiments<br /><small>Direction Études et Travaux Bâtiments — même compte que sur la tablette</small></p>
         <label>Adresse électronique
           <input className="champ" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>

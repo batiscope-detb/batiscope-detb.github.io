@@ -89,7 +89,7 @@ export default function App() {
     <ContexteDonnees.Provider value={{ donnees, erreur, recharger, nomAgent, modifier, edition, role: profil?.role ?? 'agent' }}>
       <header className="entete">
         <button type="button" className="marque-bouton" onClick={() => setParametres(true)} title="Paramètres : compte, apparence, utilisateurs">
-          <img src={`${import.meta.env.BASE_URL}embleme.png`} alt="" />
+          <img src={`${import.meta.env.BASE_URL}batiscope.svg`} alt="" />
           <span><b>Batiscope</b><small>Ville de Cherbourg-en-Cotentin</small></span>
         </button>
         <nav className="nav" aria-label="Navigation principale">

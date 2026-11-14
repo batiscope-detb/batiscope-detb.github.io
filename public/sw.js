@@ -1,6 +1,6 @@
 // Service worker minimal : permet l'installation comme application et garde l'interface
 // en cache. Les données (Supabase) ne sont jamais mises en cache.
-const CACHE = 'releves-detb-bureau-v1'
+const CACHE = 'batiscope-v1'
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (e) => e.waitUntil(
   caches.keys().then((k) => Promise.all(k.filter((n) => n !== CACHE).map((n) => caches.delete(n)))).then(() => self.clients.claim())))
