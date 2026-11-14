@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useDonnees } from '../App'
 import { BUCKETS, LIBELLE_STATUT_ERP, chargerDetail, date, urlsSignees, type DetailProjet } from '../donnees'
 import { ContexteFiche, type Fiche } from './fiche/contexte'
+import CycleVie from './fiche/CycleVie'
 import Synthese from './fiche/Synthese'
 import Batiment from './fiche/Batiment'
 import Releves from './fiche/Releves'
@@ -10,10 +11,11 @@ import Accessibilite from './fiche/Accessibilite'
 import Plans from './fiche/Plans'
 import { DialogueProjet } from './fiche/DialogueProjet'
 
-type Onglet = 'synthese' | 'batiment' | 'releves' | 'accessibilite' | 'plans'
+type Onglet = 'synthese' | 'batiment' | 'releves' | 'accessibilite' | 'plans' | 'archivage'
 const ONGLETS: { id: Onglet; libelle: string }[] = [
   { id: 'synthese', libelle: 'Synthèse' }, { id: 'batiment', libelle: 'Niveaux et locaux' }, { id: 'releves', libelle: 'Relevés' },
   { id: 'accessibilite', libelle: 'Accessibilité' }, { id: 'plans', libelle: 'Plans et repères' },
+  { id: 'archivage', libelle: 'Clôture et archivage' },
 ]
 
 
@@ -103,7 +105,7 @@ export default function FicheErp() {
 
         <div className="onglets" role="tablist">
           {ONGLETS.map((o) => (
-            <button key={o.id} role="tab" aria-selected={onglet === o.id} onClick={() => setParams({ onglet: o.id }, { replace: true })}>{o.libelle}</button>
+            <button key={o.id} role="tab" className={o.id === 'archivage' ? 'onglet-droite' : undefined} aria-selected={onglet === o.id} onClick={() => setParams({ onglet: o.id }, { replace: true })}>{o.libelle}</button>
           ))}
         </div>
         {erreur && <p className="erreur">Détails indisponibles : {erreur}</p>}
@@ -113,6 +115,7 @@ export default function FicheErp() {
         {onglet === 'releves' && <Releves />}
         {onglet === 'accessibilite' && <Accessibilite />}
         {onglet === 'plans' && <Plans />}
+        {onglet === 'archivage' && <CycleVie />}
       </main>
       <DialogueProjet ouvert={modifProjet} fermer={() => setModifProjet(false)} projet={pr} />
     </ContexteFiche.Provider>

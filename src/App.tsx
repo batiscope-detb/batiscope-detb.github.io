@@ -122,7 +122,7 @@ export default function App() {
       )}
       <Notifications />
       <Parametres ouvert={parametres} fermer={() => setParametres(false)} moi={moi} renommer={setNomAgent} />
-      <footer className="pied">Direction Études et Travaux Bâtiments — appli bureau v{__VERSION__}</footer>
+      <footer className="pied">Batiscope v{__VERSION__} — Direction Études et Travaux Bâtiments</footer>
     </ContexteDonnees.Provider>
   )
 }

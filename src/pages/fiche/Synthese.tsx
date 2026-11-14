@@ -3,7 +3,6 @@ import { travauxParLot } from '../../calculs'
 import { BarreConformite } from '../../composants/Barres'
 import { Link } from 'react-router-dom'
 import { useFiche } from './contexte'
-import CycleVie from './CycleVie'
 import Verifications from './Verifications'
 
 export default function Synthese() {
@@ -21,7 +20,6 @@ export default function Synthese() {
         </div>
       </section>
       <Verifications />
-      <CycleVie />
       <>
         <section className="grille-kpi">
           <div className="kpi"><span>Niveaux / locaux</span><b>{ind!.nbNiveaux} / {ind!.nbLocaux}</b></div>

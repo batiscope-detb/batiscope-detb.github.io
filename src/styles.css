@@ -439,3 +439,5 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 .tab-notice tr { page-break-inside: avoid; }
 .tab-notice .titre-article th { background: #2E2A5B; color: #fff; text-align: left; }
 .tab-notice .sous-titre-notice td { background: #EEECF6; }
+
+.onglets .onglet-droite { margin-left: auto; }
