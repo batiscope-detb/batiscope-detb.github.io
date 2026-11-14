@@ -1,4 +1,4 @@
-# Relevés DETB — appli bureau
+# Batiscope — appli bureau
 
 Application web (installable, sans droits administrateur) de consultation et de pilotage du patrimoine bâti
 de la Direction Études et Travaux Bâtiments, Ville de Cherbourg-en-Cotentin.
@@ -7,7 +7,7 @@ Elle lit les mêmes données que l'appli tablette « Relevés DETB » (base Supa
 et diagnostics d'accessibilité Ad'AP. Les statuts d'accessibilité sont recalculés avec le même moteur et le même
 référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibilite.json`).
 
-**Adresse :** https://emmduval50-cell.github.io/releve-detb-web/ — connexion avec le compte de la tablette.
+**Adresse :** https://batiscope.github.io/ (ancienne adresse redirigée) — connexion avec le compte de la tablette.
 
 ## Sécurité
 - Le code est public ; les données ne le sont pas : chaque lecture exige la connexion d'un agent actif
@@ -84,7 +84,7 @@ Avec le « Mode modification » (interrupteur en haut de chaque fiche) :
 ## Développement
 ```
 npm ci
-npm run dev      # http://localhost:5173/releve-detb-web/
+npm run dev      # http://localhost:5173/
 npm test
 npm run build
 ```

@@ -39,7 +39,7 @@ async function iconePng(s: Symbole): Promise<Uint8Array> {
 export async function exporterPlanPdf(e: Entree): Promise<Blob> {
   const doc = await PDFDocument.create()
   doc.setTitle(`Plan — ${e.titre} — ${e.sousTitre}`)
-  doc.setCreator('Relevés DETB — appli bureau')
+  doc.setCreator('Batiscope — DETB')
   const police = await doc.embedFont(StandardFonts.Helvetica)
   const gras = await doc.embedFont(StandardFonts.HelveticaBold)
   const paysage = e.largeur >= e.hauteur

@@ -1,6 +1,6 @@
 {
-  "name": "Relevés DETB — bureau",
-  "short_name": "Relevés DETB",
+  "name": "Batiscope — DETB",
+  "short_name": "Batiscope",
   "description": "Consultation et pilotage du patrimoine bâti — Ville de Cherbourg-en-Cotentin, DETB",
   "start_url": "./",
   "scope": "./",

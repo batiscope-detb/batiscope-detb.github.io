@@ -44,7 +44,7 @@ export default function Rapport() {
     // Attendre le chargement des photos avant de proposer l'impression.
     const imgs = [...document.querySelectorAll<HTMLImageElement>('.rapport img')]
     Promise.all(imgs.map((i) => (i.complete ? Promise.resolve() : new Promise((ok) => { i.onload = ok; i.onerror = ok })))).then(() => setPhotosChargees(true))
-    return () => { document.title = 'Relevés DETB — bureau' }
+    return () => { document.title = 'Batiscope' }
   }, [d.pret, genre, d.ind?.projet.nom])
 
   if (!d.ind) return <main className="page"><p>Bâtiment introuvable. <Link to="/">Retour</Link></p></main>
@@ -74,7 +74,7 @@ export default function Rapport() {
           {genre === 'accessibilite' && <CorpsAccessibilite d={d} />}
           {genre === 'notice' && <CorpsNotice d={d} />}
           {genre === 'registre' && <CorpsRegistre d={d} />}
-          <footer className="fin-rapport">Document édité le {new Date().toLocaleDateString('fr-FR')} par la Direction Études et Travaux Bâtiments — Ville de Cherbourg-en-Cotentin — appli Relevés DETB v{__VERSION__}</footer>
+          <footer className="fin-rapport">Document édité le {new Date().toLocaleDateString('fr-FR')} par la Direction Études et Travaux Bâtiments — Ville de Cherbourg-en-Cotentin — Batiscope v{__VERSION__}</footer>
         </article>
       )}
     </>

@@ -230,7 +230,7 @@ function APropos() {
   return (
     <div className="pile" style={{ alignItems: 'center', textAlign: 'center' }}>
       <img src={`${import.meta.env.BASE_URL}logo-detb.png`} alt="" style={{ height: 72 }} />
-      <div><b style={{ fontSize: 16 }}>Relevés DETB — appli bureau</b><br />Direction Études et Travaux Bâtiments<br />Ville de Cherbourg-en-Cotentin</div>
+      <div><b style={{ fontSize: 16 }}>Batiscope — appli bureau</b><br />Relevés d'état et diagnostics d'accessibilité<br />Direction Études et Travaux Bâtiments<br />Ville de Cherbourg-en-Cotentin</div>
       <table className="tableau" style={{ maxWidth: 520, textAlign: 'left' }}><tbody>
         <tr><td>Version</td><td>{__VERSION__}</td></tr>
         <tr><td>Référentiel accessibilité</td><td>{VERSION_REFERENTIEL}</td></tr>

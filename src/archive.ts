@@ -113,7 +113,7 @@ export async function preparerArchive(p: Projet, agent: string, progression: (te
   zip.file('manifeste.json', JSON.stringify(manifeste, null, 2))
   zip.file('donnees.json', JSON.stringify(donnees, null, 2))
   zip.file('LISEZMOI.txt', [
-    `Archive du bâtiment « ${p.nom} » — Relevés DETB, Ville de Cherbourg-en-Cotentin.`,
+    `Archive du bâtiment « ${p.nom} » — Batiscope (DETB), Ville de Cherbourg-en-Cotentin.`,
     `Créée le ${new Date().toLocaleString('fr-FR')} par ${agent}.`, '',
     'Contenu : donnees.json (toutes les données du relevé et du diagnostic), fichiers/ (photos et plans), manifeste.json (inventaire).',
     'Ne pas modifier ni renommer ce fichier : son empreinte est vérifiée avant de libérer l’espace serveur et lors de la réouverture.',
@@ -133,7 +133,7 @@ export async function verifierArchive(p: Projet & { archive_sha256?: string | nu
   const h = await empreinte(fichier)
   const zip = await JSZip.loadAsync(fichier)
   const m = zip.file('manifeste.json')
-  if (!m) throw new Error("Ce fichier n'est pas une archive Relevés DETB (manifeste absent).")
+  if (!m) throw new Error("Ce fichier n'est pas une archive Batiscope (manifeste absent).")
   const manifeste = JSON.parse(await m.async('string'))
   if (manifeste.format !== FORMAT_ARCHIVE) throw new Error('Format d’archive inconnu.')
   if (manifeste.projet?.id !== p.id) throw new Error(`Cette archive concerne un autre bâtiment (« ${manifeste.projet?.nom ?? '?'} »).`)

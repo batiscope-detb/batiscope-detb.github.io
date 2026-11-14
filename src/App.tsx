@@ -90,7 +90,7 @@ export default function App() {
       <header className="entete">
         <button type="button" className="marque-bouton" onClick={() => setParametres(true)} title="Paramètres : compte, apparence, utilisateurs">
           <img src={`${import.meta.env.BASE_URL}embleme.png`} alt="" />
-          <span><b>Relevés DETB</b><small>Ville de Cherbourg-en-Cotentin</small></span>
+          <span><b>Batiscope</b><small>Ville de Cherbourg-en-Cotentin</small></span>
         </button>
         <nav className="nav" aria-label="Navigation principale">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'actif' : '')}>Tableau de bord</NavLink>

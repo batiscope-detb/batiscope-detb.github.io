@@ -19,7 +19,7 @@ function entete(ws: ExcelJS.Worksheet, colonnes: { titre: string; largeur: numbe
 
 export async function exporterPatrimoine(ind: IndicateursErp[], p: Patrimoine) {
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'Relevés DETB — appli bureau'
+  wb.creator = 'Batiscope — DETB'
   wb.created = new Date()
   const EUR = '#,##0 "€"'
 
