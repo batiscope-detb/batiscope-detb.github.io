@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useDonnees } from '../App'
-import { BUCKETS, LIBELLE_STATUT_ERP, chargerDetail, date, urlsSignees, type DetailProjet } from '../donnees'
+import { BUCKETS, LIBELLE_STATUT_ERP, chargerDetail, date, fusionner, supabase, urlsSignees, type DetailProjet } from '../donnees'
+import { deposerFichier, ecrire, preparerPhoto } from '../ecriture'
+import { BoutonFichier, executer } from '../composants/Ui'
 import { ContexteFiche, type Fiche } from './fiche/contexte'
 import CycleVie from './fiche/CycleVie'
 import Synthese from './fiche/Synthese'
@@ -67,6 +69,25 @@ export default function FicheErp() {
   const agents = new Map((detail?.agents ?? []).map((a) => [a.id, a.nom]))
   const photoBat = pr.photo_path ? urls.get(pr.photo_path) : undefined
 
+  /** Photo de couverture du bâtiment : même dossier et même nommage que la tablette, qui la reçoit à sa synchronisation. */
+  async function changerPhoto(fichier: File | null) {
+    const ancien = pr.photo_path
+    if (!fichier && !window.confirm('Retirer la photo de ce bâtiment ?')) return
+    const r = await executer(async () => {
+      let chemin: string | null = null
+      if (fichier) {
+        chemin = `${pr.id}/batiment-${Date.now()}.jpg`
+        await deposerFichier(BUCKETS.photos, chemin, await preparerPhoto(fichier), 'image/jpeg')
+      }
+      const ligne = await ecrire('releves', 'projet', { photo_path: chemin }, { cle: { id: pr.id }, majLeConnue: pr.maj_le })
+      // L'ancien fichier n'est plus référencé : on libère la place (sans bloquer en cas d'échec).
+      if (ancien && ancien !== chemin) await supabase.storage.from(BUCKETS.photos).remove([ancien]).catch(() => undefined)
+      if (chemin) await ajouterUrls(BUCKETS.photos, [chemin])
+      return ligne
+    }, fichier ? 'Photo du bâtiment enregistrée' : 'Photo retirée')
+    if (r) modifier((x) => ({ ...x, projets: fusionner(x.projets, r, (y) => y.id) }))
+  }
+
   const fiche: Fiche = {
     ind, p, niveaux, locaux, constats, derogations, detail, urls, ajouterUrls, agents, edition, modifier,
     majDetail: (f) => setDetail((d) => (d ? f(d) : d)),
@@ -85,7 +106,15 @@ export default function FicheErp() {
           </p>
         )}
         <section className="carte entete-fiche">
-          {photoBat ? <img src={photoBat} alt={`Photo de ${pr.nom}`} /> : <div className="vignette-vide">{pr.photo_path ? 'Chargement…' : 'Pas de photo'}</div>}
+          <div className="photo-batiment">
+            {photoBat ? <img src={photoBat} alt={`Photo de ${pr.nom}`} /> : <div className="vignette-vide">{pr.photo_path ? 'Chargement…' : 'Pas de photo'}</div>}
+            {edition && (
+              <div className="photo-actions">
+                <BoutonFichier className="bouton petit" libelle={pr.photo_path ? 'Changer la photo' : 'Ajouter une photo'} accept="image/*" choisir={(f) => changerPhoto(f[0])} />
+                {pr.photo_path && <button type="button" className="bouton petit danger" onClick={() => changerPhoto(null)}>Retirer</button>}
+              </div>
+            )}
+          </div>
           <div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
               <h1>{pr.nom}</h1>

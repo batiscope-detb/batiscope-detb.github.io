@@ -479,3 +479,7 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 .tab-notice .sous-titre-notice td { background: #EEECF6; }
 
 .onglets .onglet-droite { margin-left: auto; }
+
+/* Photo du bâtiment (en-tête de fiche) */
+.photo-batiment { display: flex; flex-direction: column; gap: 8px; }
+.photo-actions { display: flex; gap: 6px; flex-wrap: wrap; }
