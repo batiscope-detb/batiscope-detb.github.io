@@ -7,7 +7,7 @@ Elle lit les mêmes données que l'appli tablette « Relevés DETB » (base Supa
 et diagnostics d'accessibilité Ad'AP. Les statuts d'accessibilité sont recalculés avec le même moteur et le même
 référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibilite.json`).
 
-**Adresse :** https://batiscope.github.io/ (ancienne adresse redirigée) — connexion avec le compte de la tablette.
+**Adresse :** https://batiscope-detb.github.io/ (ancienne adresse redirigée) — connexion avec le compte de la tablette.
 
 ## Sécurité
 - Le code est public ; les données ne le sont pas : chaque lecture exige la connexion d'un agent actif
