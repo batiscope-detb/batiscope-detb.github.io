@@ -11,7 +11,7 @@ export function BarreConformite({ s, large = false }: { s: Synthese; large?: boo
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} title={`${s.conformes} conforme(s), ${s.sousTolerance} sous tolérance, ${s.nonConformes} non conforme(s)`}>
       <div className="barre" style={{ flex: 1, height: large ? 12 : 8, minWidth: 60 }}>
         <i style={{ width: pc(s.conformes), background: 'var(--vert)' }} />
-        <i style={{ width: pc(s.sousTolerance), background: '#4FA88B' }} />
+        <i style={{ width: pc(s.sousTolerance), background: 'var(--ct)' }} />
         <i style={{ width: pc(s.nonConformes), background: 'var(--rouge)' }} />
       </div>
       <b className="num" style={{ fontSize: large ? 16 : 13 }}>{t} %</b>

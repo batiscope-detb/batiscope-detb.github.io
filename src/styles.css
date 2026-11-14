@@ -6,7 +6,7 @@
   --entete: #2E2B57; --repere: #2E2B57; --ct: #1F6B55; --ct-pale: #E3F1EC; --travaux: #5B3B9A; --travaux-pale: #EEE7FA; --texte-pale-ambre: #5E4300; --texte-pale-bleu: #183F6E;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="sepia"]) {
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="sepia"]):not([data-theme="epaper"]) {
   --encre: #ECEAF7; --encre-2: #B4B1CC; --violet: #CFC9F5; --violet-2: #8D88BD; --violet-3: #C2BCEC;
   --or: #E0A93A; --fond: #14132A; --carte: #1E1C38; --bord: #35325B; --bord-2: #4A4774; --pale: #2A2850;
   --vert: #7BC47F; --vert-pale: #1F3A25; --rouge: #F08A80; --rouge-pale: #44201F; --ambre: #E8B85A; --ambre-pale: #3D3015;
@@ -33,6 +33,33 @@
 }
 :root[data-theme="sepia"] body { font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif; font-size: 15px; }
 :root[data-theme="sepia"] .champ, :root[data-theme="sepia"] input, :root[data-theme="sepia"] textarea, :root[data-theme="sepia"] select { background: #FFFDF6; }
+:root[data-theme="epaper"] {
+  /* E-paper : niveaux de gris, encre noire, aucun effet (écran de liseuse à encre électronique). */
+  --encre: #111111; --encre-2: #3C3C3A; --violet: #111111; --violet-2: #4A4A47; --violet-3: #222222;
+  --or: #111111; --fond: #E9E9E4; --carte: #F6F6F2; --bord: #B4B4AD; --bord-2: #7E7E78; --pale: #DDDDD6;
+  --vert: #555552; --vert-pale: #DADAD4; --rouge: #000000; --rouge-pale: #E2E2DC; --ambre: #111111; --ambre-pale: transparent;
+  --bleu: #222222; --bleu-pale: transparent; --gris-pale: #E2E2DC;
+  --entete: #111111; --repere: #111111; --ct: #777773; --ct-pale: #E6E6E0; --travaux: #111111; --travaux-pale: transparent; --texte-pale-ambre: #111111; --texte-pale-bleu: #111111;
+  color-scheme: light;
+}
+:root[data-theme="epaper"] body { font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif; font-size: 15px; -webkit-font-smoothing: antialiased; }
+:root[data-theme="epaper"] *, :root[data-theme="epaper"] *::before, :root[data-theme="epaper"] *::after { box-shadow: none !important; text-shadow: none !important; transition: none !important; }
+:root[data-theme="epaper"] .carte, :root[data-theme="epaper"] dialog.dialogue { border: 1px solid var(--bord-2); }
+:root[data-theme="epaper"] .bouton.primaire { color: #FFFFFF; }
+:root[data-theme="epaper"] .champ, :root[data-theme="epaper"] input, :root[data-theme="epaper"] textarea, :root[data-theme="epaper"] select { background: #FFFFFF; border-color: var(--bord-2); }
+/* Repères sans couleur : plein = urgent / non conforme / en retard ; cerclé = à prévoir ; gris = conforme ; pointillé = autre. */
+:root[data-theme="epaper"] .e-rouge, :root[data-theme="epaper"] .s-NC, :root[data-theme="epaper"] .ech-retard { background: #111111; color: #FFFFFF; font-weight: 700; }
+:root[data-theme="epaper"] .e-ambre, :root[data-theme="epaper"] .e-programme, :root[data-theme="epaper"] .s-AE, :root[data-theme="epaper"] .s-NV, :root[data-theme="epaper"] .ech-proche, :root[data-theme="epaper"] .e-travaux { background: transparent; color: #111111; box-shadow: inset 0 0 0 1.5px #111111 !important; font-weight: 600; }
+:root[data-theme="epaper"] .e-vert, :root[data-theme="epaper"] .e-atteste, :root[data-theme="epaper"] .s-C, :root[data-theme="epaper"] .ech-ok { background: #D4D4CD; color: #111111; }
+:root[data-theme="epaper"] .s-CT { background: #E6E6E0; color: #111111; box-shadow: inset 0 0 0 1px #777773 !important; }
+:root[data-theme="epaper"] .e-bleu, :root[data-theme="epaper"] .e-diagnostic { background: transparent; color: #111111; outline: 1.5px dotted #111111; outline-offset: -1.5px; }
+:root[data-theme="epaper"] .etiquette[style*="background"] { background: #111111 !important; color: #FFFFFF !important; }
+:root[data-theme="epaper"] .barre { background: #DDDDD6; outline: 1px solid var(--bord-2); }
+:root[data-theme="epaper"] .barre > i { background: #4A4A47 !important; }
+:root[data-theme="epaper"] .barre > i[style*="--vert"] { background: #9A9A94 !important; }
+:root[data-theme="epaper"] .barre > i[style*="--ct"] { background: repeating-linear-gradient(90deg, #9A9A94 0 3px, #DDDDD6 3px 5px) !important; }
+:root[data-theme="epaper"] .barre > i[style*="--rouge"] { background: repeating-linear-gradient(45deg, #111111 0 2px, #F6F6F2 2px 4px) !important; }
+:root[data-theme="epaper"] .bandeau-veille, :root[data-theme="epaper"] .bandeau-edition, :root[data-theme="epaper"] .erreur { background: transparent; border: 1.5px solid #111111; color: #111111; }
 :root[data-taille="grand"] body { zoom: 1.12; }
 :root[data-taille="tres-grand"] body { zoom: 1.25; }
 * { box-sizing: border-box; }
@@ -158,7 +185,7 @@ details.bloc > div { padding: 0 16px 14px; }
 .connexion img { height: 64px; align-self: center; }
 .connexion img.logo-connexion { height: 96px; }
 .connexion h1 { color: #400241; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="sepia"]) .connexion h1 { color: var(--violet); } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="sepia"]):not([data-theme="epaper"]) .connexion h1 { color: var(--violet); } }
 :root[data-theme="dark"] .connexion h1 { color: var(--violet); }
 .connexion label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--encre-2); }
 .connexion .champ { width: 100%; }

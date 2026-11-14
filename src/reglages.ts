@@ -1,5 +1,5 @@
 /** Préférences d'affichage propres à ce poste (navigateur), comme les réglages de la tablette. */
-export type Theme = 'systeme' | 'clair' | 'sombre' | 'sepia'
+export type Theme = 'systeme' | 'clair' | 'sombre' | 'sepia' | 'epaper'
 export type Taille = 'normal' | 'grand' | 'tres-grand'
 
 const lire = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d } catch { return d } }
@@ -17,7 +17,7 @@ export const reglages = {
 export function appliquer() {
   const r = document.documentElement
   const t = reglages.theme
-  if (t === 'systeme') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t === 'sombre' ? 'dark' : t === 'sepia' ? 'sepia' : 'light')
+  if (t === 'systeme') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t === 'sombre' ? 'dark' : t === 'sepia' ? 'sepia' : t === 'epaper' ? 'epaper' : 'light')
   const z = reglages.taille
   if (z === 'normal') r.removeAttribute('data-taille'); else r.setAttribute('data-taille', z)
 }
