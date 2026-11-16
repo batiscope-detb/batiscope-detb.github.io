@@ -25,7 +25,7 @@ export interface Local { id: string; projet_id: string; niveau_id: string | null
 export interface Lot { id: string; libelle: string; ordre: number; archive_le: string | null }
 export interface Constat {
   id: string; local_id: string; lot_id: string | null; note: string | null; gravite: 'info' | 'a_prevoir' | 'urgent' | null
-  estimation: number | null; cree_le: string; maj_le: string; maj_par: string | null
+  estimation: number | null; cree_le: string; maj_le: string; maj_par: string | null; auteur_id?: string | null
 }
 export interface PhotoReleve { id: string; constat_id: string; point_controle_id: string | null; storage_path: string | null; ordre: number; maj_le?: string }
 export interface PointControle { id: string; lot_id: string; libelle: string; ordre: number; obsolete?: boolean }
@@ -83,7 +83,7 @@ export async function chargerPatrimoine(): Promise<Patrimoine> {
     tout<Projet>(() => rel().from('projet').select('*').is('supprime_le', null).order('nom') as unknown as Requete),
     tout<Niveau>(() => rel().from('niveau').select('id,projet_id,libelle,ordre,maj_le').is('supprime_le', null).order('ordre') as unknown as Requete),
     tout<Local>(() => rel().from('local').select('id,projet_id,niveau_id,libelle,type,ordre,etat_general,reserve_personnel,maj_le').is('supprime_le', null) as unknown as Requete),
-    tout<Constat>(() => rel().from('constat').select('id,local_id,lot_id,note,gravite,estimation,cree_le,maj_le,maj_par').is('supprime_le', null) as unknown as Requete),
+    tout<Constat>(() => rel().from('constat').select('id,local_id,lot_id,note,gravite,estimation,cree_le,maj_le,maj_par,auteur_id').is('supprime_le', null) as unknown as Requete),
     tout<Lot>(() => rel().from('lot').select('id,libelle,ordre,archive_le').is('supprime_le', null).order('ordre') as unknown as Requete),
     tout<Diagnostic>(() => acc().from('diagnostic').select('*').is('supprime_le', null) as unknown as Requete),
     tout<AccNiveau>(() => acc().from('acc_niveau').select('niveau_id,accessible_fauteuil,effectif_public,effectif_personnel,niveau_acces,maj_le').is('supprime_le', null) as unknown as Requete),

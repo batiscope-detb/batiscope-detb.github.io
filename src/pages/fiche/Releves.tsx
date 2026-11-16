@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BUCKETS, LIBELLE_GRAVITE, date, euros, fusionner, type Constat, type Local } from '../../donnees'
+import { BUCKETS, LIBELLE_GRAVITE, date, euros, fusionner, supabase, type Constat, type Local } from '../../donnees'
 import { deposerFichier, ecrire, preparerPhoto, supprimer } from '../../ecriture'
 import { nouvelId } from '../../ids'
 import { BoutonFichier, Champ, Dialogue, ecrireNombre, executer, lireNombre, signaler } from '../../composants/Ui'
@@ -88,7 +88,7 @@ export default function Releves() {
                           <b>{c.lot_id ? lots.get(c.lot_id) ?? 'Lot supprimé' : 'Sans lot'}</b>
                           {c.gravite && <span className={`etiquette ${c.gravite === 'urgent' ? 'e-rouge' : c.gravite === 'a_prevoir' ? 'e-ambre' : 'e-gris'}`}>{LIBELLE_GRAVITE[c.gravite]}</span>}
                           {c.estimation != null ? <span className="num">{euros(Number(c.estimation))} HT</span> : c.gravite !== 'info' && <span className="etiquette e-gris">Non chiffré</span>}
-                          <span style={{ marginLeft: 'auto', color: 'var(--encre-2)', fontSize: 12 }}>{date(c.maj_le)}{c.maj_par && agents.get(c.maj_par) ? ` — ${agents.get(c.maj_par)}` : ''}</span>
+                          <span style={{ marginLeft: 'auto', color: 'var(--encre-2)', fontSize: 12 }}>{date(c.maj_le)}{(() => { const qui = (c.auteur_id && agents.get(c.auteur_id)) || (c.maj_par && agents.get(c.maj_par)); return qui ? ` — ${qui}` : '' })()}</span>
                           {edition && <>
                             <BoutonFichier className="bouton petit" libelle="+ Photo" accept="image/*" multiple choisir={(fs) => ajouterPhotos(c, fs)} />
                             <button className="bouton petit" onClick={() => setDlg({ constat: c, local: l })}>Modifier</button>
@@ -137,7 +137,8 @@ function DialogueConstat({ cible, fermer }: { cible: { constat: Constat | null; 
     const est = lireNombre(estimation)
     if (estimation.trim() && est == null) return signaler("L'estimation doit être un nombre (ex. 2 400 ou 2400,50).", 'erreur')
     const id = c?.id ?? nouvelId()
-    const ligne = { local_id: localId, lot_id: lotId, gravite, estimation: est, note: note.trim() || null }
+    const auteur = c ? undefined : (await supabase.auth.getUser()).data.user?.id ?? null
+    const ligne = { local_id: localId, lot_id: lotId, gravite, estimation: est, note: note.trim() || null, ...(c ? {} : { auteur_id: auteur }) }
     const r = await executer(() => ecrire('releves', 'constat', ligne, c ? { cle: { id }, majLeConnue: c.maj_le } : { cle: { id } }), c ? 'Constat enregistré' : 'Constat ajouté')
     if (!r) return
     f.modifier((pp) => ({ ...pp, constats: fusionner(pp.constats, r, (x) => x.id) }))

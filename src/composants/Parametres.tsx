@@ -52,7 +52,7 @@ function Compte({ moi, renommer }: { moi: Moi; renommer: (nom: string) => void }
         </Champ>
         <Champ libelle="Adresse de connexion"><input className="champ" value={moi.email} readOnly /></Champ>
       </div>
-      <p className="note-param">Rôle : <b>{moi.role === 'admin' ? 'Administrateur' : 'Agent'}</b></p>
+      <p className="note-param">Rôle : <b>{moi.role === 'admin' ? 'Administrateur' : moi.role === 'tablette' ? 'Tablette partagée' : 'Agent'}</b></p>
       <FormulaireMotDePasse />
       <div><button type="button" className="bouton danger" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div>
     </div>
@@ -169,7 +169,7 @@ function Utilisateurs({ moi }: { moi: Moi }) {
                 {a.mdp_provisoire && <span className="etiquette e-ambre" style={{ marginTop: 4 }}>Mot de passe provisoire</span>}</td>
               <td><select className="champ petit" value={a.role} disabled={a.id === moi.id} aria-label={`Rôle de ${a.nom}`}
                 onChange={(e) => modifier(a, { role: e.target.value }, 'Rôle modifié')}>
-                <option value="agent">Agent</option><option value="admin">Administrateur</option></select></td>
+                <option value="agent">Agent</option><option value="admin">Administrateur</option><option value="tablette">Tablette partagée</option></select></td>
               <td><label className="case"><input type="checkbox" checked={a.actif} disabled={a.id === moi.id}
                 onChange={(e) => modifier(a, { actif: e.target.checked }, e.target.checked ? 'Compte réactivé' : 'Compte désactivé')} />{a.actif ? 'Oui' : 'Non'}</label></td>
               <td style={{ whiteSpace: 'nowrap' }}>{a.derniere_connexion ? new Date(a.derniere_connexion).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : 'Jamais'}</td>
@@ -205,8 +205,10 @@ function NouvelAgent({ fermer, cree }: { fermer: () => void; cree: (s: { nom: st
         <Champ libelle="Nom et prénom"><input className="champ" autoFocus value={nom} onChange={(e) => setNom(e.target.value)} /></Champ>
         <Champ libelle="Adresse électronique"><input className="champ" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@cherbourg.fr" /></Champ>
       </div>
-      <Champ libelle="Rôle"><select className="champ" value={role} onChange={(e) => setRole(e.target.value)}><option value="agent">Agent</option><option value="admin">Administrateur</option></select></Champ>
-      <p className="note-param">Un mot de passe provisoire est généré ; l'agent devra le changer à sa première connexion.</p>
+      <Champ libelle="Rôle"><select className="champ" value={role} onChange={(e) => setRole(e.target.value)}><option value="agent">Agent</option><option value="admin">Administrateur</option><option value="tablette">Tablette partagée</option></select></Champ>
+      <p className="note-param">{role === 'tablette'
+        ? 'Compte de synchronisation d\'une tablette partagée : notez le mot de passe généré et saisissez-le une fois sur la tablette (Compte). Il n\'apparaît pas dans la liste « Qui relève ? ». Adresse au choix, par exemple tablette1.detb@cherbourg.fr : aucun courriel n\'y est envoyé.'
+        : 'Un mot de passe provisoire est généré ; l\'agent devra le changer à sa première connexion.'}</p>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="bouton" onClick={fermer}>Annuler</button>
         <button type="button" className="bouton primaire" disabled={enCours} onClick={valider}>{enCours ? 'Création…' : 'Créer le compte'}</button>

@@ -19,7 +19,7 @@ function cleSecrete(): string {
   return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 }
 
-const ROLES = ['agent', 'admin']
+const ROLES = ['agent', 'admin', 'tablette']
 const emailValide = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
 Deno.serve(async (req) => {
@@ -65,7 +65,8 @@ Deno.serve(async (req) => {
       if (!ROLES.includes(role)) return repondre({ erreur: 'Rôle inconnu.' }, 400)
       if (motDePasse.length < 10) return repondre({ erreur: 'Mot de passe provisoire trop court (10 caractères minimum).' }, 400)
       const { data: cree, error } = await admin.auth.admin.createUser({
-        email, password: motDePasse, email_confirm: true, user_metadata: { nom, mdp_provisoire: true },
+        // Compte de tablette partagée : mot de passe saisi une fois sur la tablette, pas de changement imposé.
+        email, password: motDePasse, email_confirm: true, user_metadata: { nom, mdp_provisoire: role !== 'tablette' },
       })
       if (error) {
         if (/already|registered|exists/i.test(error.message)) return repondre({ erreur: 'Un compte existe déjà avec cette adresse.' }, 409)
@@ -82,7 +83,7 @@ Deno.serve(async (req) => {
       if (typeof corps.nom === 'string' && corps.nom.trim()) maj.nom = corps.nom.trim()
       if (typeof corps.role === 'string') { if (!ROLES.includes(corps.role)) return repondre({ erreur: 'Rôle inconnu.' }, 400); maj.role = corps.role }
       if (typeof corps.actif === 'boolean') maj.actif = corps.actif
-      if (id === moi && (maj.role === 'agent' || maj.actif === false)) return repondre({ erreur: 'Vous ne pouvez pas retirer vos propres droits d’administrateur.' }, 400)
+      if (id === moi && ((maj.role && maj.role !== 'admin') || maj.actif === false)) return repondre({ erreur: 'Vous ne pouvez pas retirer vos propres droits d’administrateur.' }, 400)
       if (!Object.keys(maj).length) return repondre({ erreur: 'Rien à modifier.' }, 400)
       const { data: modifies, error } = await agents().update(maj).eq('id', id).select('id')
       if (error) throw error
