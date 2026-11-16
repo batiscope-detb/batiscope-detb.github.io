@@ -483,3 +483,9 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 /* Photo du bâtiment (en-tête de fiche) */
 .photo-batiment { display: flex; flex-direction: column; gap: 8px; }
 .photo-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Schémas cotés des points de contrôle */
+.vignette-schema { display: block; margin-top: 6px; padding: 2px; width: 150px; border: 1px solid var(--bord); border-radius: 6px; background: #fff; cursor: zoom-in; }
+.vignette-schema:hover { border-color: var(--violet-3); }
+.vignette-schema img { display: block; width: 100%; height: auto; }
+.schema-grand { display: block; width: 100%; max-width: 960px; height: auto; background: #fff; border-radius: 6px; }

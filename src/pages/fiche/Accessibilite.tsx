@@ -9,6 +9,7 @@ import {
   type Diagnostic, type Element, type Ligne, type Saisie, type Statut,
 } from '../../moteur'
 import { BarreConformite, EtiquetteStatut } from '../../composants/Barres'
+import { SchemaRegle, schemaDe } from '../../composants/Schema'
 import { Photos } from '../../composants/Photos'
 import { BoutonFichier, Champ, Dialogue, ecrireNombre, executer, lireNombre, signaler } from '../../composants/Ui'
 import { useFiche } from './contexte'
@@ -143,7 +144,10 @@ export default function Accessibilite() {
                       <table className="tableau tableau-acc">
                         <thead><tr><th>Règle</th><th>Point de contrôle</th><th>Exigence</th><th>Mesure</th><th>Statut</th></tr></thead>
                         <tbody>
-                          {ls.map((l) => {
+                          {ls.map((l, k) => {
+                            // Un même schéma sert à plusieurs règles : vignette à sa première apparition, lien ensuite.
+                            const sch = schemaDe(l.regle.id)
+                            const dejaVu = sch != null && ls.slice(0, k).some((x) => schemaDe(x.regle.id) === sch)
                             const der = derogPar.get(`${e.element.id}|${l.regle.id}`)
                             const cle = `${e.element.id}|${l.regle.id}`
                             return (
@@ -177,6 +181,7 @@ export default function Accessibilite() {
                                     </div>
                                   ) : <EtiquetteStatut statut={l.statut} />}
                                   {l.regle.gravite === 'Bloquant' && l.statut === 'NC' && <div style={{ fontSize: 11, color: 'var(--rouge)' }}>Bloquant</div>}
+                                  <SchemaRegle regleId={l.regle.id} compact={dejaVu} />
                                 </td>
                               </tr>
                             )
