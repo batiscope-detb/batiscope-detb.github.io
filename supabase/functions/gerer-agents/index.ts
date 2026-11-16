@@ -73,7 +73,11 @@ Deno.serve(async (req) => {
         throw error
       }
       const { error: ea } = await agents().upsert({ id: cree.user.id, nom, email, role, actif: true }, { onConflict: 'id' })
-      if (ea) throw ea
+      if (ea) {
+        // Profil refusé : on supprime le compte tout juste créé pour ne pas laisser de compte orphelin.
+        await admin.auth.admin.deleteUser(cree.user.id).catch(() => undefined)
+        throw ea
+      }
       return repondre({ ok: true, id: cree.user.id })
     }
 
@@ -102,7 +106,9 @@ Deno.serve(async (req) => {
       const motDePasse = String(corps.motDePasse ?? '')
       if (id === moi) return repondre({ erreur: 'Changez votre propre mot de passe dans « Mon compte ».' }, 400)
       if (motDePasse.length < 10) return repondre({ erreur: 'Mot de passe provisoire trop court (10 caractères minimum).' }, 400)
-      const { error } = await admin.auth.admin.updateUserById(id, { password: motDePasse, user_metadata: { mdp_provisoire: true } })
+      const { data: cible } = await agents().select('role').eq('id', id).maybeSingle()
+      // Tablette partagée : mot de passe saisi une fois sur la tablette, pas de changement imposé.
+      const { error } = await admin.auth.admin.updateUserById(id, { password: motDePasse, user_metadata: { mdp_provisoire: cible?.role !== 'tablette' } })
       if (error) throw error
       return repondre({ ok: true })
     }
