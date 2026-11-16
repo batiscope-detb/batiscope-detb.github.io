@@ -6,7 +6,11 @@ import { Dialogue } from './Ui'
 const { titres, regles } = donnees as { titres: Record<string, string>; regles: Record<string, string> }
 
 export const schemaDe = (regleId: string): string | null => regles[regleId] ?? null
-const url = (nom: string) => `${import.meta.env.BASE_URL}schemas/${nom}.svg`
+/** Tous les schémas, avec les règles qu'ils illustrent (ordre alphabétique des titres). */
+export const SCHEMAS = Object.entries(titres).map(([nom, titre]) => ({ nom, titre, regles: Object.keys(regles).filter((r) => regles[r] === nom) }))
+  .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'))
+export const urlSchema = (nom: string) => `${import.meta.env.BASE_URL}schemas/${nom}.svg`
+const url = urlSchema
 
 /** Vignette cliquable ; `compact` : simple lien quand le même schéma est déjà montré plus haut. */
 export function SchemaRegle({ regleId, compact }: { regleId: string; compact?: boolean }) {

@@ -489,3 +489,10 @@ dialog.dialogue form { flex: 1 1 auto; min-height: 0; height: auto; }
 .vignette-schema:hover { border-color: var(--violet-3); }
 .vignette-schema img { display: block; width: 100%; height: auto; }
 .schema-grand { display: block; width: 100%; max-width: 960px; height: auto; background: #fff; border-radius: 6px; }
+
+.galerie-schemas > summary { cursor: pointer; font-weight: 600; color: var(--violet); }
+.grille-schemas { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 12px; }
+.carte-schema { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 8px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); cursor: pointer; font: inherit; color: var(--encre); }
+.carte-schema img { width: 100%; height: auto; background: #fff; border-radius: 4px; }
+.carte-schema b { font-size: 13px; } .carte-schema small { color: var(--encre-2); }
+.carte-schema:hover, .carte-schema.choisi { border-color: var(--violet-3); box-shadow: 0 0 0 2px var(--violet-3) inset; }
