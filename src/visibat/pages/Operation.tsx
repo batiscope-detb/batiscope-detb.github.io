@@ -8,13 +8,16 @@ import FicheContact, { nomComplet } from '../composants/FicheContact'
 import Entete, { Onglets } from '../composants/Entete'
 import { Champ, Dialogue, executer, signaler } from '../../composants/Ui'
 import { dateFr, dateHeureFr, depuisSaisie, versSaisie } from '../ui'
+import { GestionPlans } from '../composants/Plans'
+import { useUrls } from '../useUrls'
 
-type Onglet = 'reunions' | 'intervenants' | 'lots' | 'fiche'
+type Onglet = 'reunions' | 'intervenants' | 'lots' | 'plans' | 'fiche'
 
 export default function PageOperation() {
   const { id } = useParams()
   const { dossier, erreur, recharger } = useDossier(id)
   const [onglet, setOnglet] = useState<Onglet>('reunions')
+  const urls = useUrls(dossier)
   if (erreur) return <main className="page"><p className="erreur">{erreur}</p></main>
   if (!dossier) return <div className="chargement"><span className="roue" />Chargement…</div>
   const op = dossier.operation
@@ -23,10 +26,11 @@ export default function PageOperation() {
       <Entete fil={[{ lien: `/visibat/operation/${op.id}`, libelle: op.nom }]} titre={op.nom} sousTitre={[op.objet, op.adresse].filter(Boolean).join(' · ') || undefined}>
         {op.projet_id && <Link className="bouton" to={`/erp/${op.projet_id}`}>Fiche du bâtiment</Link>}
       </Entete>
-      <Onglets valeur={onglet} changer={setOnglet} choix={[['reunions', 'Réunions'], ['intervenants', 'Intervenants'], ['lots', 'Lots'], ['fiche', 'Fiche opération']]} />
+      <Onglets valeur={onglet} changer={setOnglet} choix={[['reunions', 'Réunions'], ['intervenants', 'Intervenants'], ['lots', 'Lots'], ['plans', 'Plans'], ['fiche', 'Fiche opération']]} />
       {onglet === 'reunions' && <Reunions dossier={dossier} />}
       {onglet === 'intervenants' && <Intervenants dossier={dossier} recharger={recharger} />}
       {onglet === 'lots' && <Lots dossier={dossier} recharger={recharger} />}
+      {onglet === 'plans' && <GestionPlans dossier={dossier} recharger={recharger} urls={urls} />}
       {onglet === 'fiche' && <Fiche dossier={dossier} recharger={recharger} />}
     </main>
   )

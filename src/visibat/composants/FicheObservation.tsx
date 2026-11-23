@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { statutDe, useVisibat } from '../contexte'
-import { enregistrer, modifier, supprimer, type Dossier, type Observation, type Reunion } from '../donnees'
+import { BUCKET, enregistrer, modifier, supprimer, type Dossier, type Observation, type Reunion } from '../donnees'
+import { deposerFichier, preparerPhoto } from '../../ecriture'
+import { Photos } from '../../composants/Photos'
+import { urlPhoto } from '../useUrls'
 import { libelleType, prochainNumero } from '../regles'
 import { nomComplet } from './FicheContact'
-import { Dialogue, executer, signaler } from '../../composants/Ui'
+import { BoutonFichier, Dialogue, executer, signaler } from '../../composants/Ui'
 import { aujourdhui, dateFr, fonce, pale } from '../ui'
 
 interface Formulaire {
@@ -12,14 +15,15 @@ interface Formulaire {
 }
 
 /** Saisie ou modification d'une observation (remarque) dans une réunion. */
-export default function FicheObservation({ dossier, reunion, observation, ouvert, fermer, recharger, lotParDefaut }: {
+export default function FicheObservation({ dossier, reunion, observation, ouvert, fermer, recharger, lotParDefaut, position, urls }: {
   dossier: Dossier; reunion: Reunion; observation: Observation | null; ouvert: boolean; fermer: () => void
-  recharger: () => Promise<void>; lotParDefaut?: string
+  recharger: () => Promise<void>; lotParDefaut?: string; position?: { planId: string; x: number; y: number }; urls: Map<string, string>
 }) {
   const { statuts, contacts, moi, agents } = useVisibat()
   const [f, setF] = useState<Formulaire | null>(null)
   const [nouvelleTache, setNouvelleTache] = useState('')
   const [commentaire, setCommentaire] = useState('')
+  const [enAttente, setEnAttente] = useState<{ id: string; fichier: File; url: string }[]>([])
 
   useEffect(() => {
     if (!ouvert) return
@@ -31,13 +35,16 @@ export default function FicheObservation({ dossier, reunion, observation, ouvert
       intervenants: o ? dossier.obsIntervenants.filter((x) => x.observation_id === o.id).map((x) => x.intervenant_id) : [],
       permanente: o ? o.reunion_id === null : false,
     })
-    setNouvelleTache(''); setCommentaire('')
+    setNouvelleTache(''); setCommentaire(''); setEnAttente([])
   }, [ouvert, observation, dossier, lotParDefaut])
 
   if (!f) return null
   const statut = statutDe(statuts, f.statut_code)
   const nomInterv = (id: string) => { const i = dossier.intervenants.find((x) => x.id === id); const c = contacts.find((x) => x.id === i?.contact_id); return `${nomComplet(c)}${c?.societe ? ` (${c.societe})` : ''}` }
   const basculer = (liste: string[], v: string) => liste.includes(v) ? liste.filter((x) => x !== v) : [...liste, v]
+  const photos = observation ? dossier.photos.filter((p) => p.observation_id === observation.id) : []
+  const positionExistante = observation ? dossier.positions.find((p) => p.observation_id === observation.id) : undefined
+  const planDe = (id: string) => dossier.plans.find((p) => p.id === id)?.libelle ?? 'plan'
   const checklist = observation ? dossier.checklists.filter((c) => c.observation_id === observation.id) : []
   const commentaires = observation ? dossier.commentaires.filter((c) => c.observation_id === observation.id) : []
   const historique = observation ? dossier.suivis.filter((s) => s.observation_id === observation.id)
@@ -71,9 +78,24 @@ export default function FicheObservation({ dossier, reunion, observation, ouvert
       const suivi = dossier.suivis.find((s) => s.observation_id === o.id && s.reunion_id === reunion.id)
       if (suivi) await modifier('observation_suivi', suivi.id, { statut_code: f.statut_code })
       else await enregistrer('observation_suivi', { observation_id: o.id, reunion_id: reunion.id, statut_code: f.statut_code })
+      // Pastille posée sur le plan avant la saisie
+      if (position && !observation) await enregistrer('observation_position', { observation_id: o.id, plan_id: position.planId, x: position.x, y: position.y })
+      // Photos prises pendant la saisie
+      for (const [i, p] of enAttente.entries()) await envoyerPhoto(o.id, p.fichier, photos.length + i)
       return observation ? 'Observation enregistrée' : `Observation ${numero} créée`
     })
     if (fait) { signaler(fait); await recharger(); fermer() }
+  }
+
+  async function envoyerPhoto(observationId: string, fichier: File, ordre: number) {
+    const chemin = `${dossier.operation.id}/photos/${observationId}/${crypto.randomUUID()}.jpg`
+    await deposerFichier(BUCKET, chemin, await preparerPhoto(fichier), 'image/jpeg')
+    await enregistrer('observation_photo', { observation_id: observationId, storage_path: chemin, ordre })
+  }
+  async function ajouterPhotos(fichiers: File[]) {
+    if (!observation) { setEnAttente((l) => [...l, ...fichiers.map((f) => ({ id: crypto.randomUUID(), fichier: f, url: URL.createObjectURL(f) }))]); return }
+    const ok = await executer(async () => { for (const [i, f] of fichiers.entries()) await envoyerPhoto(observation.id, f, photos.length + i); return true }, fichiers.length > 1 ? 'Photos ajoutées' : 'Photo ajoutée')
+    if (ok) await recharger()
   }
 
   async function ajouterTache() {
@@ -140,6 +162,23 @@ export default function FicheObservation({ dossier, reunion, observation, ouvert
             {nomInterv(i.id)} · {libelleType(i.categorie)}</button>))}
         </div>
       </fieldset>}
+      <section className="pile" style={{ gap: 6 }}>
+        <div className="vb-barre">
+          <span className="vb-discret" style={{ fontWeight: 600, flex: 1 }}>Photos</span>
+          <BoutonFichier className="bouton petit" libelle="+ Photo" accept="image/*" multiple choisir={ajouterPhotos} />
+        </div>
+        <Photos photos={[...photos.map((p) => ({ id: p.id, url: urlPhoto(urls, p.storage_path) })), ...enAttente.map((p) => ({ id: p.id, url: p.url }))]}
+          surSupprimer={async (id) => {
+            if (enAttente.some((p) => p.id === id)) { setEnAttente((l) => l.filter((p) => p.id !== id)); return }
+            if (confirm('Supprimer cette photo ?') && await executer(() => supprimer('observation_photo', id).then(() => true), 'Photo supprimée')) await recharger()
+          }} />
+      </section>
+      {(position || positionExistante) && <div className="vb-barre vb-discret">
+        <span>Pastille posée sur le plan « {planDe(position?.planId ?? positionExistante!.plan_id)} »</span>
+        {positionExistante && <button type="button" className="bouton petit" onClick={async () => {
+          if (await executer(() => supprimer('observation_position', positionExistante.id).then(() => true), 'Pastille retirée')) await recharger()
+        }}>Retirer du plan</button>}
+      </div>}
       {!observation && <label className="case"><input type="checkbox" checked={f.permanente} onChange={(e) => setF({ ...f, permanente: e.target.checked })} />Point permanent (numéroté 0.x : marché, règles de chantier…)</label>}
 
       {observation && <>

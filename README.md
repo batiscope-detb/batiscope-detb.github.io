@@ -14,6 +14,16 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.9 (Visibat : plans avec pastilles et photos)
+- Onglet **Plans** d'une opération : import d'un PDF ou d'une image (choix de la page d'un PDF), ou reprise des plans
+  des niveaux du bâtiment Batiscope ; renommage, aperçu, retrait.
+- Onglet **Plans** d'une réunion : pastilles des observations, à la couleur de leur statut et à leur numéro.
+  Mode « Poser une remarque » : un toucher sur le plan ouvre la saisie d'une nouvelle observation, déjà positionnée.
+  Toucher une pastille ouvre l'observation ; mode « Déplacer les pastilles ».
+- **Photos** des observations (appareil photo sur téléphone et tablette, réduites à 1600 px comme sur la tablette),
+  vignettes dans la liste, agrandissement, suppression.
+- Compte rendu : photos sous chaque observation et plans avec pastilles en fin de document (options à cocher).
+
 ## Version 0.8 (module Visibat : comptes rendus de chantier)
 - Nouvelle entrée **Visibat** dans le menu (loupe Visibat) : visites et comptes rendus de réunions de chantier, avec les
   réglages de Batiscope (thèmes, taille du texte…). Données dans le schéma `visibat` de la même base, mêmes comptes.

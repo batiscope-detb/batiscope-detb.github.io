@@ -22,6 +22,8 @@ a.vb-carte:hover { border-color: var(--violet-2); }
 .vb-obs:hover { border-color: var(--violet-2); border-left-color: var(--couleur, #999); }
 .vb-obs .vb-ligne { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
 .vb-obs .vb-texte { font-size: 15px; line-height: 1.45; white-space: pre-wrap; }
+.vb-vignettes { display: flex; gap: 6px; }
+.vb-vignettes img { width: 72px; height: 54px; object-fit: cover; border-radius: 6px; border: 1px solid var(--bord); }
 .vb-etat { width: 44px; height: 44px; border-radius: 22px; border: none; color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; background: #b8b0bb; }
 .vb-etat.petit { width: 24px; height: 24px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; cursor: default; }
 .vb-commentaire { background: #fffbe6; color: #1c1b1f; border: 1px solid #f0e2a8; border-radius: 10px; padding: 8px 10px; font-size: 14px; }
@@ -42,4 +44,9 @@ a.vb-carte:hover { border-color: var(--violet-2); }
   body:has(.vb-feuille) .pied, body:has(.vb-feuille) .notifications { display: none !important; }
   main.page:has(> .vb-feuille) { padding: 0; max-width: none; }
   .vb-feuille { padding: 0; max-width: none; }
+  .vb-feuille .zoom-commandes { display: none !important; }
 }
+.vb-feuille .vb-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.vb-feuille .vb-photos img { width: 150px; height: 112px; object-fit: cover; border: 1px solid #ddd; }
+.vb-feuille .vb-plan { break-before: page; margin-top: 14px; }
+.vb-feuille .vb-plan .plan-vue { border: 1px solid #ddd; }

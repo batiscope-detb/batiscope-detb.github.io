@@ -42,12 +42,16 @@ export interface ObservationIntervenant extends Base { observation_id: string; i
 export interface ObservationSuivi extends Base { observation_id: string; reunion_id: string; statut_code: string; complement: string | null }
 export interface ObservationChecklist extends Base { observation_id: string; libelle: string; fait: boolean; ordre: number }
 export interface ObservationCommentaire extends Base { observation_id: string; agent_id: string | null; texte: string; cree_le?: string }
+export interface Plan extends Base { operation_id: string; libelle: string; storage_path: string; page_index: number; ordre: number; bucket: 'visibat' | 'plans-releves'; niveau_id: string | null }
+export interface Position extends Base { observation_id: string; plan_id: string; x: number; y: number }
+export interface Photo extends Base { observation_id: string; storage_path: string; legende: string | null; ordre: number }
 
 /** Tout ce qu'il faut pour travailler sur une opération. */
 export interface Dossier {
   operation: Operation; lots: Lot[]; intervenants: Intervenant[]; reunions: Reunion[]; presences: Presence[]
   observations: Observation[]; obsLots: ObservationLot[]; obsIntervenants: ObservationIntervenant[]; suivis: ObservationSuivi[]
   checklists: ObservationChecklist[]; commentaires: ObservationCommentaire[]
+  plans: Plan[]; positions: Position[]; photos: Photo[]
 }
 
 // --- Lecture --------------------------------------------------------------------------------
@@ -84,8 +88,8 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
   const { data: op, error } = await vb().from('operation').select('*').eq('id', operationId).single()
   if (error) throw new Error(error.message)
   const parOp = <T,>(table: string) => tout<T>(() => vb().from(table).select('*').eq('operation_id', operationId))
-  const [lots, intervenants, reunions, observations] = await Promise.all([
-    parOp<Lot>('lot'), parOp<Intervenant>('intervenant'), parOp<Reunion>('reunion'), parOp<Observation>('observation'),
+  const [lots, intervenants, reunions, observations, plans] = await Promise.all([
+    parOp<Lot>('lot'), parOp<Intervenant>('intervenant'), parOp<Reunion>('reunion'), parOp<Observation>('observation'), parOp<Plan>('plan'),
   ])
   const idsR = reunions.map((r) => r.id)
   const idsO = observations.map((o) => o.id)
@@ -94,13 +98,15 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
     for (let i = 0; i < ids.length; i += 200) res.push(...await tout<T>(() => vb().from(table).select('*').in(col, ids.slice(i, i + 200))))
     return res
   }
-  const [presences, obsLots, obsIntervenants, suivis, checklists, commentaires] = await Promise.all([
+  const [presences, obsLots, obsIntervenants, suivis, checklists, commentaires, positions, photos] = await Promise.all([
     parListe<Presence>('presence', 'reunion_id', idsR),
     parListe<ObservationLot>('observation_lot', 'observation_id', idsO),
     parListe<ObservationIntervenant>('observation_intervenant', 'observation_id', idsO),
     parListe<ObservationSuivi>('observation_suivi', 'observation_id', idsO),
     parListe<ObservationChecklist>('observation_checklist', 'observation_id', idsO),
     parListe<ObservationCommentaire>('observation_commentaire', 'observation_id', idsO),
+    parListe<Position>('observation_position', 'observation_id', idsO),
+    parListe<Photo>('observation_photo', 'observation_id', idsO),
   ])
   return {
     operation: op as Operation,
@@ -109,6 +115,8 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
     reunions: actifs(reunions).sort((a, b) => a.numero - b.numero),
     presences: actifs(presences), observations: actifs(observations), obsLots: actifs(obsLots), obsIntervenants: actifs(obsIntervenants),
     suivis: actifs(suivis), checklists: actifs(checklists).sort((a, b) => a.ordre - b.ordre), commentaires: actifs(commentaires),
+    plans: actifs(plans).sort((a, b) => a.ordre - b.ordre), positions: actifs(positions).map((p) => ({ ...p, x: Number(p.x), y: Number(p.y) })),
+    photos: actifs(photos).sort((a, b) => a.ordre - b.ordre),
   }
 }
 
@@ -129,4 +137,21 @@ export async function modifier(table: string, id: string, champs: Record<string,
 export async function supprimer(table: string, id: string) {
   const { error } = await vb().from(table).update({ supprime_le: new Date().toISOString(), maj_le: new Date().toISOString() }).eq('id', id)
   if (error) throw new Error(error.message)
+}
+
+// --- Fichiers ---------------------------------------------------------------------------------
+export const BUCKET = 'visibat'
+
+/** Plans du bâtiment Batiscope (un par niveau), pour les reprendre dans l'opération. */
+export async function plansDuBatiment(projetId: string) {
+  const { data: niveaux, error: e1 } = await supabase.schema('releves').from('niveau').select('id,libelle,ordre').eq('projet_id', projetId).is('supprime_le', null).order('ordre')
+  if (e1) throw new Error(e1.message)
+  const ids = (niveaux ?? []).map((n) => n.id as string)
+  if (!ids.length) return []
+  const { data: plans, error: e2 } = await supabase.schema('releves').from('plan_niveau').select('niveau_id,storage_path,page_index').in('niveau_id', ids).is('supprime_le', null)
+  if (e2) throw new Error(e2.message)
+  return (plans ?? []).filter((p) => p.storage_path).map((p) => ({
+    niveau_id: p.niveau_id as string, storage_path: p.storage_path as string, page_index: (p.page_index as number) ?? 0,
+    libelle: (niveaux ?? []).find((n) => n.id === p.niveau_id)?.libelle as string ?? 'Niveau',
+  }))
 }

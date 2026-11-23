@@ -11,13 +11,16 @@ import { Champ, executer } from '../../composants/Ui'
 import Entete, { Onglets } from '../composants/Entete'
 import { EtiquetteStatut, aujourdhui, dateFr, dateHeureFr, depuisSaisie, versSaisie } from '../ui'
 import { emailOutlook } from '../diffusion'
+import { useUrls, urlPhoto } from '../useUrls'
+import { PlanReunion } from '../composants/Plans'
 
-type Onglet = 'presences' | 'observations' | 'cloture'
+type Onglet = 'presences' | 'observations' | 'plan' | 'cloture'
 
 export default function PageReunion() {
   const { id, reunionId } = useParams()
   const { dossier, erreur, recharger } = useDossier(id)
   const [onglet, setOnglet] = useState<Onglet>('observations')
+  const urls = useUrls(dossier)
   if (erreur) return <main className="page"><p className="erreur">{erreur}</p></main>
   if (!dossier) return <div className="chargement"><span className="roue" />Chargement…</div>
   const reunion = dossier.reunions.find((r) => r.id === reunionId)
@@ -27,9 +30,9 @@ export default function PageReunion() {
     <main className="page">
       <Entete fil={[{ lien: `/visibat/operation/${op.id}`, libelle: op.nom }]} titre={`Réunion de chantier n° ${reunion.numero}`}
         sousTitre={`${dateHeureFr(reunion.date_reunion)} · ${reunion.lieu ?? ''}${reunion.prochaine_date ? ` · prochaine réunion : ${dateHeureFr(reunion.prochaine_date)}` : ''}`} />
-      <Onglets valeur={onglet} changer={setOnglet} choix={[['presences', 'Présences'], ['observations', 'Observations'], ['cloture', 'Clôture & diffusion']]} />
+      <Onglets valeur={onglet} changer={setOnglet} choix={[['presences', 'Présences'], ['observations', 'Observations'], ['plan', 'Plans'], ['cloture', 'Clôture & diffusion']]} />
       {onglet === 'presences' && <Presences dossier={dossier} reunion={reunion} recharger={recharger} />}
-      {onglet === 'observations' && <Observations dossier={dossier} reunion={reunion} recharger={recharger} />}
+      {(onglet === 'observations' || onglet === 'plan') && <Observations dossier={dossier} reunion={reunion} recharger={recharger} urls={urls} surPlan={onglet === 'plan'} />}
       {onglet === 'cloture' && <Cloture dossier={dossier} reunion={reunion} recharger={recharger} />}
     </main>
   )
@@ -90,16 +93,23 @@ function Presences({ dossier, reunion, recharger }: { dossier: Dossier; reunion:
   </>
 }
 
-function Observations({ dossier, reunion, recharger }: { dossier: Dossier; reunion: Reunion; recharger: () => Promise<void> }) {
+function Observations({ dossier, reunion, recharger, urls, surPlan }: { dossier: Dossier; reunion: Reunion; recharger: () => Promise<void>; urls: Map<string, string>; surPlan: boolean }) {
   const { statuts, contacts } = useVisibat()
   const [filtre, setFiltre] = useState('tous')
-  const [fiche, setFiche] = useState<{ o: Observation | null; lot?: string } | null>(null)
+  const [fiche, setFiche] = useState<{ o: Observation | null; lot?: string; position?: { planId: string; x: number; y: number } } | null>(null)
   const visibles = useMemo(() => observationsVisibles(dossier, reunion, statuts), [dossier, reunion, statuts])
   const filtrees = visibles.filter((o) => filtre === 'tous' || o.statut_code === filtre)
   const groupes = rubriques(dossier, filtrees, contacts).filter((g) => g.observations.length > 0 || (filtre === 'tous' && g.lotId))
   const nb = (code: string) => code === 'tous' ? visibles.length : visibles.filter((o) => o.statut_code === code).length
   const auj = aujourdhui()
 
+  const ficheDialogue = <FicheObservation dossier={dossier} reunion={reunion} observation={fiche?.o ?? null} lotParDefaut={fiche?.lot} position={fiche?.position}
+    urls={urls} ouvert={!!fiche} fermer={() => setFiche(null)} recharger={recharger} />
+  if (surPlan) return <>
+    <PlanReunion dossier={dossier} observations={visibles} urls={urls} recharger={recharger}
+      poser={(planId, x, y) => setFiche({ o: null, position: { planId, x, y } })} ouvrir={(o) => setFiche({ o })} />
+    {ficheDialogue}
+  </>
   return <>
     <div className="vb-barre">
       <button type="button" className="bouton primaire" onClick={() => setFiche({ o: null })}>+ Observation</button>
@@ -121,15 +131,20 @@ function Observations({ dossier, reunion, recharger }: { dossier: Dossier; reuni
           const c = contacts.find((x) => x.id === charge?.contact_id)
           const retard = enRetard(o.echeance, !!s?.soldant, auj)
           const nbCheck = dossier.checklists.filter((x) => x.observation_id === o.id)
+          const photos = dossier.photos.filter((x) => x.observation_id === o.id)
+          const surLePlan = dossier.positions.some((x) => x.observation_id === o.id)
           return (
             <button key={`${g.cle}-${o.id}`} type="button" className="vb-obs" style={{ ['--couleur' as string]: s?.couleur ?? '#999' }} onClick={() => setFiche({ o })}>
               <span className="vb-ligne">
                 <span className="vb-numero">{o.numero}</span><EtiquetteStatut statut={s} />
                 <span className="vb-discret">{o.date_statut ? `depuis le ${dateFr(o.date_statut)}` : ''}{o.cree_le ? `, créée le ${dateFr(o.cree_le)}` : ''}</span>
                 {o.reunion_id !== reunion.id && o.reunion_id && <span className="etiquette" style={{ background: 'var(--pale)', color: 'var(--violet)' }}>Reportée</span>}
-                {nbCheck.length > 0 && <span className="vb-discret" style={{ marginLeft: 'auto' }}>☑ {nbCheck.filter((x) => x.fait).length}/{nbCheck.length}</span>}
+                <span className="vb-discret" style={{ marginLeft: 'auto' }}>
+                  {[nbCheck.length ? `☑ ${nbCheck.filter((x) => x.fait).length}/${nbCheck.length}` : '', photos.length ? `${photos.length} photo${photos.length > 1 ? 's' : ''}` : '', surLePlan ? 'sur plan' : ''].filter(Boolean).join(' · ')}
+                </span>
               </span>
               <span className="vb-texte">{o.texte}</span>
+              {photos.length > 0 && <span className="vb-vignettes">{photos.slice(0, 4).map((p) => { const u = urlPhoto(urls, p.storage_path); return u ? <img key={p.id} src={u} alt="" loading="lazy" /> : null })}</span>}
               {(charge || o.echeance || o.date_intervention) && <span className="vb-discret">
                 {charge && <>À charge de : <strong>{c?.societe ?? nomComplet(c)}</strong> </>}
                 {o.echeance && <> · Échéance : <span className={retard ? 'vb-retard' : ''}>{dateFr(o.echeance)}{retard ? ' (dépassée)' : ''}</span></>}
@@ -139,7 +154,7 @@ function Observations({ dossier, reunion, recharger }: { dossier: Dossier; reuni
         })}
         {g.observations.length === 0 && <p className="vb-discret" style={{ margin: 0 }}>Aucune observation.</p>}
       </section>))}
-    <FicheObservation dossier={dossier} reunion={reunion} observation={fiche?.o ?? null} lotParDefaut={fiche?.lot} ouvert={!!fiche} fermer={() => setFiche(null)} recharger={recharger} />
+    {ficheDialogue}
   </>
 }
 

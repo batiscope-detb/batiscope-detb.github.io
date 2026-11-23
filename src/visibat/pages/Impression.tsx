@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { statutDe, useVisibat } from '../contexte'
 import { ORDRE_CATEGORIES, cumulAbsences, libelleType } from '../regles'
@@ -6,6 +6,10 @@ import { observationsVisibles, rubriques } from '../organisation'
 import { useDossier } from '../useDossier'
 import { nomComplet } from '../composants/FicheContact'
 import { dateFr, dateHeureFr, fonce } from '../ui'
+import { useUrls, urlPhoto, urlPlan } from '../useUrls'
+import type { Repere } from '../../composants/Plan'
+
+const Plan = lazy(() => import('../../composants/Plan').then((m) => ({ default: m.Plan })))
 
 /** Aperçu du CR (modèle « complet ») à imprimer ou enregistrer en PDF depuis le navigateur. */
 export default function Impression() {
@@ -13,6 +17,9 @@ export default function Impression() {
   const { dossier, erreur } = useDossier(id)
   const { statuts, contacts, moi } = useVisibat()
   const [memoire, setMemoire] = useState(true)
+  const [avecPhotos, setAvecPhotos] = useState(true)
+  const [avecPlans, setAvecPlans] = useState(true)
+  const urls = useUrls(dossier)
   const reunion = dossier?.reunions.find((r) => r.id === reunionId)
   const obs = useMemo(() => dossier && reunion ? observationsVisibles(dossier, reunion, statuts) : [], [dossier, reunion, statuts])
   if (erreur) return <main className="page"><p className="erreur">{erreur}</p></main>
@@ -29,6 +36,8 @@ export default function Impression() {
       <div className="vb-titre vb-ne-pas-imprimer">
         <div><div className="vb-fil"><Link to={`/visibat/operation/${op.id}/reunion/${reunion.id}`}>← Retour à la réunion</Link></div><h1>Aperçu du compte rendu</h1></div>
         <label className="case"><input type="checkbox" checked={memoire} onChange={(e) => setMemoire(e.target.checked)} />Points « pour mémoire »</label>
+        <label className="case"><input type="checkbox" checked={avecPhotos} onChange={(e) => setAvecPhotos(e.target.checked)} />Photos</label>
+        <label className="case"><input type="checkbox" checked={avecPlans} onChange={(e) => setAvecPlans(e.target.checked)} />Plans avec pastilles</label>
         <button type="button" className="bouton primaire" onClick={() => window.print()}>Imprimer / enregistrer en PDF</button>
       </div>
       <article className="vb-feuille">
@@ -81,12 +90,30 @@ export default function Impression() {
                     <span style={{ marginLeft: 'auto', background: '#2b2730', color: '#fff', padding: '0 6px', borderRadius: 4 }}>{o.numero}</span>
                   </div>
                   <div style={{ whiteSpace: 'pre-wrap', marginTop: 3 }}>{o.texte}</div>
+                  {avecPhotos && (() => {
+                    const ph = dossier.photos.filter((x) => x.observation_id === o.id).map((x) => urlPhoto(urls, x.storage_path)).filter(Boolean)
+                    return ph.length ? <div className="vb-photos">{ph.map((u) => <img key={u} src={u} alt="" />)}</div> : null
+                  })()}
                   {(charge || o.echeance || o.date_intervention) && <div style={{ color: '#5c5560', marginTop: 3 }}>
                     {charge && `À charge de : ${c?.societe ?? nomComplet(c)}`}{o.echeance && ` · échéance ${dateFr(o.echeance)}`}{o.date_intervention && ` · programmée le ${dateFr(o.date_intervention)}`}
                   </div>}
                 </div>)
             })}
           </section>))}
+        {avecPlans && dossier.plans.map((pl) => {
+          const ids = new Set(affichees.map((o) => o.id))
+          const pos = dossier.positions.filter((p) => p.plan_id === pl.id && ids.has(p.observation_id))
+          const u = urlPlan(urls, pl)
+          if (!pos.length || !u) return null
+          const reperes: Repere[] = pos.map((p) => {
+            const o = affichees.find((x) => x.id === p.observation_id)!
+            return { id: p.id, x: p.x, y: p.y, texte: o.numero, titre: o.numero, couleur: statutDe(statuts, o.statut_code)?.couleur }
+          })
+          return <section key={pl.id} className="vb-plan">
+            <div className="vb-rub">Plan : {pl.libelle}</div>
+            <Suspense fallback={null}><Plan url={u} page={pl.page_index} reperes={reperes} /></Suspense>
+          </section>
+        })}
       </article>
     </main>
   )
