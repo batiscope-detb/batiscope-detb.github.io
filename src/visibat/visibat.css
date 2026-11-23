@@ -50,3 +50,31 @@ a.vb-carte:hover { border-color: var(--violet-2); }
 .vb-feuille .vb-photos img { width: 150px; height: 112px; object-fit: cover; border: 1px solid #ddd; }
 .vb-feuille .vb-plan { break-before: page; margin-top: 14px; }
 .vb-feuille .vb-plan .plan-vue { border: 1px solid #ddd; }
+
+/* Planning (moteur Planibat) */
+.vb-planning { display: grid; grid-template-columns: minmax(560px, 58%) minmax(0, 1fr); align-items: start; }
+@media (max-width: 1000px) { .vb-planning { grid-template-columns: 1fr; } .vb-planning .vb-gantt { border-left: none; border-top: 1px solid var(--bord); } }
+.vb-taches thead th { height: 36px; padding-top: 0; padding-bottom: 0; vertical-align: middle; }
+.vb-taches tbody tr { height: 41px; cursor: pointer; }
+.vb-taches tbody td { padding: 3px 6px; vertical-align: middle; border-bottom: 1px solid var(--bord); }
+.vb-taches tr.vb-choisie td { background: var(--pale); }
+.vb-taches tr.vb-critique td.num { color: var(--rouge); font-weight: 700; }
+.vb-taches tr.vb-groupe td { font-weight: 700; color: var(--violet); background: var(--fond); }
+.vb-gantt { border-left: 1px solid var(--bord); overflow: hidden; }
+.vb-gantt-mois { position: relative; height: 36px; border-bottom: 1px solid var(--bord); background: var(--pale); }
+.vb-gantt-mois span { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--bord-2); font-size: 11px; font-weight: 600; color: var(--violet); padding: 10px 4px 0; overflow: hidden; white-space: nowrap; }
+.vb-gantt-corps { position: relative; }
+.vb-gantt-ligne { position: relative; height: var(--h, 41px); border-bottom: 1px solid var(--bord); box-sizing: border-box; }
+.vb-gantt-ligne.vb-choisie { background: var(--pale); }
+.vb-gantt-ligne.vb-groupe { background: var(--fond); }
+.vb-gantt-auj { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--rouge); z-index: 1; }
+.vb-barre-g { position: absolute; top: 25%; height: 50%; border-radius: 4px; border: 1px solid rgba(0,0,0,.18); box-sizing: border-box; }
+.vb-barre-g.recap { top: 38%; height: 24%; background: #2b2730; border-radius: 2px; }
+.vb-barre-g.critique { border: 2px solid var(--rouge); }
+.vb-jalon { position: absolute; top: 50%; width: 12px; height: 12px; background: #1c1b1f; transform: translate(-50%, -50%) rotate(45deg); }
+.vb-jalon.prog { background: #6b3fa0; border: 2px solid #fff; }
+.vb-extrait { display: grid; grid-template-columns: minmax(0, 40%) minmax(0, 1fr); border: 1px solid #ddd; margin-top: 6px; }
+.vb-extrait table { border: none; }
+.vb-extrait table { margin-top: 36px; }
+.vb-extrait td { height: 23px; padding: 0 6px; border: none; border-bottom: 1px solid #eee; font-size: 11px; }
+.vb-extrait .vb-gantt { --pale: #f1e6f0; --bord: #e5e5e5; --bord-2: #ddd; --violet: #430742; --rouge: #b3261e; --fond: #fafafa; }

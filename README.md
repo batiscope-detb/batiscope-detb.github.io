@@ -14,6 +14,16 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.10 (Visibat : annotations des plans et planning)
+- Plans des réunions : mode « Symboles et annotations », avec la palette et les outils de Batiscope (symboles, texte,
+  flèche, cote, zone, nuage, tracé libre), calques, fiche de l'annotation (valeur, orientation, taille, couleur).
+  Les annotations sont attachées au plan de l'opération et figurent dans le compte rendu.
+- Onglet **Planning** d'une opération (facultatif), avec le moteur de **Planibat** : jours ouvrés, fériés,
+  prédécesseurs FD / DD / FF avec décalage, sous-tâches, chemin critique, vues structure / par lot / par zone ;
+  import et export au format Planibat (.json) ; lots de l'opération repris (rapprochés par leur code à l'import).
+  Les remarques « Programmée » figurent en losange sur le Gantt.
+- Compte rendu : extrait du planning (4 ou 8 semaines à venir) ou planning complet, au choix.
+
 ## Version 0.9 (Visibat : plans avec pastilles et photos)
 - Onglet **Plans** d'une opération : import d'un PDF ou d'une image (choix de la page d'un PDF), ou reprise des plans
   des niveaux du bâtiment Batiscope ; renommage, aperçu, retrait.

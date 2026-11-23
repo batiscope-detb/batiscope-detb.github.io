@@ -299,7 +299,7 @@ export default function Plans() {
   )
 }
 
-function Palette({ famille, setFamille, outil, choisir }: { famille: string; setFamille: (f: string) => void; outil: Symbole | null; choisir: (s: Symbole) => void }) {
+export function Palette({ famille, setFamille, outil, choisir }: { famille: string; setFamille: (f: string) => void; outil: Symbole | null; choisir: (s: Symbole) => void }) {
   const [q, setQ] = useState('')
   const t = q.trim().toLowerCase()
   const liste = t ? SYMBOLES.filter((s) => `${s.nom} ${s.usage}`.toLowerCase().includes(t)) : SYMBOLES.filter((s) => s.famille === famille)
@@ -363,7 +363,7 @@ function Reperes({ locaux, marqueurs, elements, voir, placer }: {
   )
 }
 
-function FicheAnnotation({ a, edition, fermer, modifier, supprimer, liens }: {
+export function FicheAnnotation({ a, edition, fermer, modifier, supprimer, liens }: {
   a: Annotation; edition: boolean; fermer: () => void; modifier: (p: Partial<Annotation>) => void; supprimer: () => void
   liens: { type: 'local' | 'element'; id: string; libelle: string }[]
 }) {

@@ -8,6 +8,11 @@ import { nomComplet } from '../composants/FicheContact'
 import { dateFr, dateHeureFr, fonce } from '../ui'
 import { useUrls, urlPhoto, urlPlan } from '../useUrls'
 import type { Repere } from '../../composants/Plan'
+import { CalqueAnnotations } from '../../composants/Annotations'
+import { FAMILLES } from '../../symboles'
+import { versAnnotation } from '../composants/Plans'
+import { ExtraitPlanning } from '../composants/Planning'
+import { normaliser, nouveauPlanning } from '../planning/moteur'
 
 const Plan = lazy(() => import('../../composants/Plan').then((m) => ({ default: m.Plan })))
 
@@ -19,6 +24,7 @@ export default function Impression() {
   const [memoire, setMemoire] = useState(true)
   const [avecPhotos, setAvecPhotos] = useState(true)
   const [avecPlans, setAvecPlans] = useState(true)
+  const [planning, setPlanning] = useState<'aucun' | '4' | '8' | 'complet'>('aucun')
   const urls = useUrls(dossier)
   const reunion = dossier?.reunions.find((r) => r.id === reunionId)
   const obs = useMemo(() => dossier && reunion ? observationsVisibles(dossier, reunion, statuts) : [], [dossier, reunion, statuts])
@@ -38,6 +44,10 @@ export default function Impression() {
         <label className="case"><input type="checkbox" checked={memoire} onChange={(e) => setMemoire(e.target.checked)} />Points « pour mémoire »</label>
         <label className="case"><input type="checkbox" checked={avecPhotos} onChange={(e) => setAvecPhotos(e.target.checked)} />Photos</label>
         <label className="case"><input type="checkbox" checked={avecPlans} onChange={(e) => setAvecPlans(e.target.checked)} />Plans avec pastilles</label>
+        {op.planning_actif && op.planning != null && <label className="vb-discret">Planning{' '}
+          <select className="champ petit" value={planning} onChange={(e) => setPlanning(e.target.value as typeof planning)}>
+            <option value="aucun">Ne pas joindre</option><option value="4">Extrait : 4 semaines à venir</option><option value="8">Extrait : 8 semaines à venir</option><option value="complet">Planning complet</option>
+          </select></label>}
         <button type="button" className="bouton primaire" onClick={() => window.print()}>Imprimer / enregistrer en PDF</button>
       </div>
       <article className="vb-feuille">
@@ -100,18 +110,26 @@ export default function Impression() {
                 </div>)
             })}
           </section>))}
+        {planning !== 'aucun' && op.planning_actif && op.planning != null && <section style={{ breakInside: 'avoid' }}>
+          <div className="vb-rub">{planning === 'complet' ? 'Planning' : `Planning — ${planning} semaines à venir`}</div>
+          <ExtraitPlanning planning={normaliser(op.planning, nouveauPlanning(op.nom, op.debut_travaux ?? reunion.date_reunion.slice(0, 10), []))}
+            depuis={new Date(Date.UTC(...(reunion.date_reunion.slice(0, 10).split('-').map(Number).map((n, i) => (i === 1 ? n - 1 : n)) as [number, number, number])))}
+            semaines={planning === 'complet' ? null : Number(planning)} />
+        </section>}
         {avecPlans && dossier.plans.map((pl) => {
           const ids = new Set(affichees.map((o) => o.id))
           const pos = dossier.positions.filter((p) => p.plan_id === pl.id && ids.has(p.observation_id))
           const u = urlPlan(urls, pl)
-          if (!pos.length || !u) return null
+          const anns = dossier.annotations.filter((a) => a.plan_id === pl.id).map(versAnnotation)
+          if ((!pos.length && !anns.length) || !u) return null
           const reperes: Repere[] = pos.map((p) => {
             const o = affichees.find((x) => x.id === p.observation_id)!
             return { id: p.id, x: p.x, y: p.y, texte: o.numero, titre: o.numero, couleur: statutDe(statuts, o.statut_code)?.couleur }
           })
           return <section key={pl.id} className="vb-plan">
             <div className="vb-rub">Plan : {pl.libelle}</div>
-            <Suspense fallback={null}><Plan url={u} page={pl.page_index} reperes={reperes} /></Suspense>
+            <Suspense fallback={null}><Plan url={u} page={pl.page_index} reperes={reperes}
+              superposition={(ratio) => <CalqueAnnotations ratio={ratio} annotations={anns} visibles={new Set(FAMILLES.map((f) => f.id))} outil={null} edition={false} selection={null} creer={() => {}} deplacer={() => {}} choisir={() => {}} />} /></Suspense>
           </section>
         })}
       </article>

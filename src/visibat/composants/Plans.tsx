@@ -1,9 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import type { Repere } from '../../composants/Plan'
+import { CalqueAnnotations, IconeSymbole, type NouvelleAnnotation } from '../../composants/Annotations'
+import { FicheAnnotation, Palette } from '../../pages/fiche/Plans'
+import { COULEURS_ANNOTATION, FAMILLES, symboleParId, type Symbole } from '../../symboles'
+import type { Annotation } from '../../donnees'
 import { BoutonFichier, Champ, Dialogue, executer } from '../../composants/Ui'
 import { deposerFichier, nombrePages, preparerPlan } from '../../ecriture'
 import { statutDe, useVisibat } from '../contexte'
-import { BUCKET, enregistrer, modifier, plansDuBatiment, supprimer, type Dossier, type Observation, type Plan as PlanVb } from '../donnees'
+import { BUCKET, enregistrer, modifier, plansDuBatiment, supprimer, type Dossier, type Observation, type Plan as PlanVb, type PlanAnnotation } from '../donnees'
 import { urlPlan } from '../useUrls'
 
 // Le lecteur de PDF est lourd : chargé seulement quand un plan s'affiche.
@@ -81,46 +85,135 @@ export function GestionPlans({ dossier, recharger, urls }: { dossier: Dossier; r
   </>
 }
 
-/** Plan d'une réunion avec les pastilles des observations visibles ; mode « poser » pour créer une observation positionnée. */
+/** Annotation Visibat → format Batiscope (le plan tient lieu de niveau). */
+export function versAnnotation(a: PlanAnnotation): Annotation {
+  const d = a.donnees as Partial<Annotation>
+  return {
+    id: a.id, niveau_id: a.plan_id, type: String(d.type ?? 'texte'), x: Number(d.x ?? 0), y: Number(d.y ?? 0), points: d.points ?? null,
+    rotation: Number(d.rotation ?? 0), taille: d.taille ?? 'm', valeur: d.valeur ?? null, commentaire: d.commentaire ?? null, couleur: d.couleur ?? null,
+    lien_type: null, lien_id: null, maj_le: a.maj_le,
+  }
+}
+const donneesDe = (a: Annotation) => ({ type: a.type, x: a.x, y: a.y, points: a.points, rotation: a.rotation, taille: a.taille, valeur: a.valeur, commentaire: a.commentaire, couleur: a.couleur })
+const TOUS_CALQUES = new Set([...FAMILLES.map((f) => f.id), 'pastilles'])
+const SAISIE_IMMEDIATE = new Set(['texte', 'cote'])
+
+/** Plan d'une réunion : pastilles des observations visibles, pose d'une remarque positionnée, symboles et annotations. */
 export function PlanReunion({ dossier, observations, urls, poser, ouvrir, recharger }: {
   dossier: Dossier; observations: Observation[]; urls: Map<string, string>
   poser: (planId: string, x: number, y: number) => void; ouvrir: (o: Observation) => void; recharger: () => Promise<void>
 }) {
   const { statuts } = useVisibat()
   const [planId, setPlanId] = useState<string | null>(() => { try { return localStorage.getItem(`visibat-plan-${dossier.operation.id}`) } catch { return null } })
-  const [mode, setMode] = useState<'consulter' | 'poser' | 'deplacer'>('consulter')
+  const [mode, setMode] = useState<'consulter' | 'poser' | 'deplacer' | 'dessiner'>('consulter')
+  const [outil, setOutil] = useState<Symbole | null>(null)
+  const [famille, setFamille] = useState(FAMILLES[0].id)
+  const [annSel, setAnnSel] = useState<string | null>(null)
+  const [visibles, setVisibles] = useState<Set<string>>(TOUS_CALQUES)
+  // Annotations gardées en mémoire et enregistrées à chaque geste (pas de rechargement complet à chaque trait).
+  const [locales, setLocales] = useState<Annotation[]>([])
   const plan: PlanVb | undefined = dossier.plans.find((p) => p.id === planId) ?? dossier.plans[0]
-  if (!dossier.plans.length) return <p className="vide">Aucun plan pour cette opération : importez-en un dans l’onglet « Plans » de l’opération.</p>
-  const choisirPlan = (id: string) => { setPlanId(id); try { localStorage.setItem(`visibat-plan-${dossier.operation.id}`, id) } catch { /* rien */ } }
+  useEffect(() => { setLocales(dossier.annotations.map(versAnnotation)) }, [dossier.annotations])
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => {
+      const saisie = (e.target as HTMLElement)?.closest?.('input, textarea, select')
+      if (e.key === 'Escape') setOutil(null)
+      if (e.key === 'Delete' && annSel && mode === 'dessiner' && !saisie) retirer(annSel)
+    }
+    window.addEventListener('keydown', f)
+    return () => window.removeEventListener('keydown', f)
+  })
+  if (!plan) return <p className="vide">Aucun plan pour cette opération : importez-en un dans l’onglet « Plans » de l’opération.</p>
+
+  const choisirPlan = (id: string) => { setPlanId(id); setAnnSel(null); try { localStorage.setItem(`visibat-plan-${dossier.operation.id}`, id) } catch { /* rien */ } }
+  const changerMode = (m: typeof mode) => { setMode(m); setOutil(null); setAnnSel(null) }
   const parId = new Map(observations.map((o) => [o.id, o]))
   const positions = dossier.positions.filter((p) => p.plan_id === plan.id && parId.has(p.observation_id))
-  const reperes: Repere[] = positions.map((p) => {
+  const reperes: Repere[] = !visibles.has('pastilles') || outil ? [] : positions.map((p) => {
     const o = parId.get(p.observation_id)!
     const s = statutDe(statuts, o.statut_code)
     return { id: p.id, x: p.x, y: p.y, texte: o.numero, titre: `${o.numero} — ${s?.libelle ?? ''} — ${o.texte.slice(0, 80)}`, couleur: s?.couleur }
   })
+  const annotations = locales.filter((a) => a.niveau_id === plan.id)
+  const choisie = annotations.find((a) => a.id === annSel) ?? null
   const url = urlPlan(urls, plan)
+  const basculer = (id: string) => { const n = new Set(visibles); if (n.has(id)) n.delete(id); else n.add(id); setVisibles(n) }
 
+  async function creer(n: NouvelleAnnotation) {
+    const s = symboleParId.get(n.type)!
+    const a: Annotation = { id: crypto.randomUUID(), niveau_id: plan!.id, type: n.type, x: n.x, y: n.y, points: n.points, rotation: 0, taille: 'm',
+      valeur: s.defaut ?? null, commentaire: null, couleur: s.famille === 'annot' ? COULEURS_ANNOTATION[0] : null, lien_type: null, lien_id: null }
+    setLocales((l) => [...l, a])
+    const ok = await executer(() => enregistrer('plan_annotation', { id: a.id, plan_id: plan!.id, donnees: donneesDe(a) }))
+    if (!ok) { setLocales((l) => l.filter((x) => x.id !== a.id)); return }
+    setAnnSel(a.id)
+    if (SAISIE_IMMEDIATE.has(s.id)) setOutil(null)
+  }
+  async function changer(a: Annotation, patch: Partial<Annotation>) {
+    const n = { ...a, ...patch }
+    setLocales((l) => l.map((x) => (x.id === a.id ? n : x)))
+    await executer(() => modifier('plan_annotation', a.id, { donnees: donneesDe(n) }))
+  }
+  async function deplacer(id: string, dx: number, dy: number) {
+    const a = annotations.find((z) => z.id === id)
+    if (!a) return
+    const b = (v: number) => Math.min(1, Math.max(0, v))
+    await changer(a, { x: b(a.x + dx), y: b(a.y + dy), points: a.points?.map(([px, py]) => [b(px + dx), b(py + dy)] as [number, number]) ?? null })
+    setAnnSel(id)
+  }
+  async function retirer(id: string) {
+    setLocales((l) => l.filter((x) => x.id !== id)); setAnnSel(null)
+    if (!await executer(() => supprimer('plan_annotation', id).then(() => true), 'Supprimé du plan')) await recharger()
+  }
+
+  const dessin = mode === 'dessiner'
   return <>
     <div className="vb-barre">
       <select className="champ" value={plan.id} onChange={(e) => choisirPlan(e.target.value)} aria-label="Plan affiché">
         {dossier.plans.map((p) => <option key={p.id} value={p.id}>{p.libelle}</option>)}
       </select>
       <div className="vb-puces" role="group" aria-label="Mode">
-        <button type="button" className="vb-puce" aria-pressed={mode === 'consulter'} onClick={() => setMode('consulter')}>Consulter</button>
-        <button type="button" className="vb-puce" aria-pressed={mode === 'poser'} onClick={() => setMode('poser')}>● Poser une remarque</button>
-        <button type="button" className="vb-puce" aria-pressed={mode === 'deplacer'} onClick={() => setMode('deplacer')}>Déplacer les pastilles</button>
+        <button type="button" className="vb-puce" aria-pressed={mode === 'consulter'} onClick={() => changerMode('consulter')}>Consulter</button>
+        <button type="button" className="vb-puce" aria-pressed={mode === 'poser'} onClick={() => changerMode('poser')}>● Poser une remarque</button>
+        <button type="button" className="vb-puce" aria-pressed={mode === 'deplacer'} onClick={() => changerMode('deplacer')}>Déplacer les pastilles</button>
+        <button type="button" className="vb-puce" aria-pressed={dessin} onClick={() => changerMode('dessiner')}>Symboles et annotations</button>
       </div>
-      <span className="vb-discret">{mode === 'poser' ? 'Touchez le plan : la saisie de la remarque s’ouvre, déjà positionnée.' : mode === 'deplacer' ? 'Faites glisser une pastille.' : 'Touchez une pastille pour ouvrir l’observation.'}</span>
     </div>
-    <section className="carte" style={{ padding: 8 }}>
-      {url ? <Suspense fallback={<div className="chargement"><span className="roue" />Chargement du plan…</div>}>
-        <Plan url={url} page={plan.page_index} reperes={reperes} viseur={mode === 'poser'}
-          surClic={mode === 'poser' ? (x, y) => poser(plan.id, x, y) : undefined}
-          surChoix={(id) => { const p = positions.find((z) => z.id === id); const o = p && parId.get(p.observation_id); if (o) ouvrir(o) }}
-          surDeplacement={mode === 'deplacer' ? async (id, x, y) => { if (await executer(() => modifier('observation_position', id, { x, y }).then(() => true))) await recharger() } : undefined} />
-      </Suspense> : <div className="chargement"><span className="roue" />Chargement du plan…</div>}
-    </section>
-    {positions.length === 0 && <p className="vb-discret">Aucune pastille sur ce plan pour cette réunion.</p>}
+    <div className="calques" role="group" aria-label="Calques affichés">
+      <span>Calques :</span>
+      {[{ id: 'pastilles', nom: 'Pastilles des observations', couleur: '#430742' }, ...FAMILLES].map((c) => (
+        <label key={c.id} className={`calque${visibles.has(c.id) ? ' actif' : ''}`}>
+          <input type="checkbox" checked={visibles.has(c.id)} onChange={() => basculer(c.id)} />
+          <span className="pastille-calque" style={{ background: c.couleur }} />{c.nom}
+        </label>))}
+    </div>
+    <div className={dessin ? 'plan-edition' : undefined}>
+      <div>
+        {mode === 'poser' && <p className="bandeau-placement">Touchez le plan : la saisie de la remarque s’ouvre, déjà positionnée. <button type="button" className="bouton petit" onClick={() => changerMode('consulter')}>Terminer</button></p>}
+        {mode === 'deplacer' && <p className="bandeau-placement">Faites glisser une pastille pour la déplacer. <button type="button" className="bouton petit" onClick={() => changerMode('consulter')}>Terminer</button></p>}
+        {dessin && outil && <p className="bandeau-placement"><IconeSymbole s={outil} taille={22} />
+          {outil.geometrie === 'symbole' || outil.geometrie === 'point' ? `Cliquez sur le plan pour poser « ${outil.nom} ».`
+            : outil.geometrie === 'libre' ? 'Dessinez en maintenant le bouton enfoncé.' : 'Cliquez-glissez du point de départ au point d’arrivée.'}
+          <button type="button" className="bouton petit" onClick={() => setOutil(null)}>Terminer (Échap)</button></p>}
+        <section className="carte" style={{ padding: 8 }}>
+          {url ? <Suspense fallback={<div className="chargement"><span className="roue" />Chargement du plan…</div>}>
+            <Plan url={url} page={plan.page_index} reperes={reperes} viseur={mode === 'poser'}
+              surClic={mode === 'poser' ? (x, y) => poser(plan.id, x, y) : undefined}
+              surChoix={(id) => { const p = positions.find((z) => z.id === id); const o = p && parId.get(p.observation_id); if (o) ouvrir(o) }}
+              surDeplacement={mode === 'deplacer' ? async (id, x, y) => { if (await executer(() => modifier('observation_position', id, { x, y }).then(() => true))) await recharger() } : undefined}
+              superposition={(ratio) => (
+                <CalqueAnnotations ratio={ratio} annotations={annotations} visibles={visibles} outil={dessin ? outil : null} edition={dessin}
+                  selection={annSel} creer={creer} deplacer={deplacer} choisir={(id) => dessin && setAnnSel(id)} />
+              )} />
+          </Suspense> : <div className="chargement"><span className="roue" />Chargement du plan…</div>}
+        </section>
+        {positions.length === 0 && <p className="vb-discret">Aucune pastille sur ce plan pour cette réunion.</p>}
+      </div>
+      {dessin && <aside className="carte panneau-plan">
+        {choisie
+          ? <FicheAnnotation key={choisie.id} a={choisie} edition fermer={() => setAnnSel(null)} modifier={(p) => changer(choisie, p)} supprimer={() => retirer(choisie.id)} liens={[]} />
+          : <Palette famille={famille} setFamille={setFamille} outil={outil} choisir={(s) => { setOutil(outil?.id === s.id ? null : s); setAnnSel(null) }} />}
+      </aside>}
+    </div>
   </>
 }

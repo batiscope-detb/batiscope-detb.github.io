@@ -44,6 +44,8 @@ export interface ObservationChecklist extends Base { observation_id: string; lib
 export interface ObservationCommentaire extends Base { observation_id: string; agent_id: string | null; texte: string; cree_le?: string }
 export interface Plan extends Base { operation_id: string; libelle: string; storage_path: string; page_index: number; ordre: number; bucket: 'visibat' | 'plans-releves'; niveau_id: string | null }
 export interface Position extends Base { observation_id: string; plan_id: string; x: number; y: number }
+/** Symbole ou annotation dessiné sur un plan (même contenu que releves.annotation, rangé dans « donnees »). */
+export interface PlanAnnotation extends Base { plan_id: string; donnees: Record<string, unknown> }
 export interface Photo extends Base { observation_id: string; storage_path: string; legende: string | null; ordre: number }
 
 /** Tout ce qu'il faut pour travailler sur une opération. */
@@ -51,7 +53,7 @@ export interface Dossier {
   operation: Operation; lots: Lot[]; intervenants: Intervenant[]; reunions: Reunion[]; presences: Presence[]
   observations: Observation[]; obsLots: ObservationLot[]; obsIntervenants: ObservationIntervenant[]; suivis: ObservationSuivi[]
   checklists: ObservationChecklist[]; commentaires: ObservationCommentaire[]
-  plans: Plan[]; positions: Position[]; photos: Photo[]
+  plans: Plan[]; positions: Position[]; photos: Photo[]; annotations: PlanAnnotation[]
 }
 
 // --- Lecture --------------------------------------------------------------------------------
@@ -92,13 +94,14 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
     parOp<Lot>('lot'), parOp<Intervenant>('intervenant'), parOp<Reunion>('reunion'), parOp<Observation>('observation'), parOp<Plan>('plan'),
   ])
   const idsR = reunions.map((r) => r.id)
+  const idsP = plans.map((p) => p.id)
   const idsO = observations.map((o) => o.id)
   const parListe = async <T,>(table: string, col: string, ids: string[]) => {
     const res: T[] = []
     for (let i = 0; i < ids.length; i += 200) res.push(...await tout<T>(() => vb().from(table).select('*').in(col, ids.slice(i, i + 200))))
     return res
   }
-  const [presences, obsLots, obsIntervenants, suivis, checklists, commentaires, positions, photos] = await Promise.all([
+  const [presences, obsLots, obsIntervenants, suivis, checklists, commentaires, positions, photos, annotations] = await Promise.all([
     parListe<Presence>('presence', 'reunion_id', idsR),
     parListe<ObservationLot>('observation_lot', 'observation_id', idsO),
     parListe<ObservationIntervenant>('observation_intervenant', 'observation_id', idsO),
@@ -107,6 +110,7 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
     parListe<ObservationCommentaire>('observation_commentaire', 'observation_id', idsO),
     parListe<Position>('observation_position', 'observation_id', idsO),
     parListe<Photo>('observation_photo', 'observation_id', idsO),
+    parListe<PlanAnnotation>('plan_annotation', 'plan_id', idsP),
   ])
   return {
     operation: op as Operation,
@@ -116,7 +120,7 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
     presences: actifs(presences), observations: actifs(observations), obsLots: actifs(obsLots), obsIntervenants: actifs(obsIntervenants),
     suivis: actifs(suivis), checklists: actifs(checklists).sort((a, b) => a.ordre - b.ordre), commentaires: actifs(commentaires),
     plans: actifs(plans).sort((a, b) => a.ordre - b.ordre), positions: actifs(positions).map((p) => ({ ...p, x: Number(p.x), y: Number(p.y) })),
-    photos: actifs(photos).sort((a, b) => a.ordre - b.ordre),
+    photos: actifs(photos).sort((a, b) => a.ordre - b.ordre), annotations: actifs(annotations),
   }
 }
 
