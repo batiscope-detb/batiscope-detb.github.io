@@ -67,3 +67,12 @@ describe('ordre dans une rubrique', () => {
     expect(trierRubrique(o).map((x) => x.numero)).toEqual(['0.18', '75.1', '93.1', '94.1'])
   })
 })
+
+describe('couleurs des documents', () => {
+  it('passe les statuts en gris en noir et blanc et garde les couleurs sinon', async () => {
+    const { couleurDoc } = await import('../visibat/export/reglages')
+    expect(couleurDoc('#b3261e', { palette: 'prune' })).toBe('#b3261e')
+    expect(couleurDoc('#b3261e', { palette: 'nb' })).toMatch(/^#([0-9a-f]{2})\1\1$/)
+    expect(completer({ palette: 'inconnue' }).palette).toBe('prune')
+  })
+})

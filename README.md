@@ -25,6 +25,7 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
 - Planning : barres du Gantt **déplaçables à la souris** (début imposé, retiré si la tâche revient à sa date au plus tôt)
   et **durée modifiable** en tirant le bord droit.
 - Aperçu du CR : **export Word (.docx)** pour retouche avant envoi.
+- Roue crantée : **couleurs du document** (prune Ville, bleu, vert, ardoise, bordeaux) ou **noir et blanc** (statuts en niveaux de gris, logo en gris).
 
 ## Version 0.11 (Visibat : modèles d'export et PDF joint au brouillon Outlook)
 - Onglet **Export & diffusion** d'une réunion : dernier modèle utilisé, mes modèles, modèles du groupe et modèles

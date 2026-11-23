@@ -34,7 +34,7 @@ a.vb-carte:hover { border-color: var(--violet-2); }
 /* Compte rendu imprimable */
 .vb-feuille { background: #fff; color: #1c1b1f; max-width: 820px; margin: 0 auto; padding: 28px 34px; font-size: 12px; border-radius: 4px; }
 .vb-feuille h1 { font-size: 20px; margin: 0; }
-.vb-feuille .vb-rub { background: #f1e6f0; color: #430742; font-weight: 700; padding: 6px 10px; margin-top: 14px; text-transform: uppercase; }
+.vb-feuille .vb-rub { background: var(--vb-pale, #f1e6f0); color: var(--vb-fonce, #430742); font-weight: 700; padding: 6px 10px; margin-top: 14px; text-transform: uppercase; }
 .vb-feuille .vb-item { border-left: 4px solid var(--couleur, #999); padding: 6px 10px; margin-top: 8px; break-inside: avoid; }
 .vb-feuille table { width: 100%; border-collapse: collapse; }
 .vb-feuille th, .vb-feuille td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; vertical-align: top; }
@@ -92,3 +92,6 @@ table.vb-fixe td, table.vb-fixe th { overflow: hidden; text-overflow: ellipsis; 
 .vb-barre-g.mobile { cursor: grab; touch-action: none; }
 .vb-barre-g.mobile:active { cursor: grabbing; }
 .vb-poignee { position: absolute; right: -3px; top: -2px; bottom: -2px; width: 9px; cursor: ew-resize; }
+
+.vb-palette { display: inline-flex; align-items: center; gap: 6px; }
+.vb-nuance { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }

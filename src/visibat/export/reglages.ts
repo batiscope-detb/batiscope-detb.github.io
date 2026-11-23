@@ -13,15 +13,36 @@ export interface Reglages {
   photos: 'vignettes' | 'grandes' | 'aucune' | 'mosaique'
   garde: boolean; presences: boolean; generales: boolean; plans: boolean; memoire: boolean
   par_entreprise: boolean
+  /** Jeu de couleurs du document (en-têtes, bandeaux) ; « nb » = noir et blanc, statuts en niveaux de gris. */
+  palette: 'prune' | 'bleu' | 'vert' | 'ardoise' | 'bordeaux' | 'nb'
 }
 export const REGLAGES_DEFAUT: Reglages = {
   remarques: 'courante_et_non_levees', classement: 'intervenant_puis_lot', planning: 'aucun', photos: 'vignettes',
-  garde: true, presences: true, generales: true, plans: true, memoire: true, par_entreprise: false,
+  garde: true, presences: true, generales: true, plans: true, memoire: true, par_entreprise: false, palette: 'prune',
 }
 /** Complète des réglages enregistrés (anciens modèles, champs manquants). */
 export function completer(r: unknown): Reglages {
   const x = (r && typeof r === 'object' ? r : {}) as Partial<Reglages> & { planning?: string }
-  return { ...REGLAGES_DEFAUT, ...x, planning: (x.planning === 'extrait_4_semaines' || x.planning === 'extrait_8_semaines' || x.planning === 'complet') ? x.planning : 'aucun' } as Reglages
+  const palette = x.palette && x.palette in PALETTES ? x.palette : 'prune'
+  return { ...REGLAGES_DEFAUT, ...x, palette, planning: (x.planning === 'extrait_4_semaines' || x.planning === 'extrait_8_semaines' || x.planning === 'complet') ? x.planning : 'aucun' } as Reglages
+}
+
+/** Couleurs des documents : teinte des titres et bandeaux, et fond pâle des bandeaux. */
+export const PALETTES: Record<Reglages['palette'], { nom: string; fonce: string; pale: string }> = {
+  prune: { nom: 'Prune (Ville de Cherbourg)', fonce: '#430742', pale: '#f1e6f0' },
+  bleu: { nom: 'Bleu', fonce: '#1f4e79', pale: '#e3ecf6' },
+  vert: { nom: 'Vert', fonce: '#2e6b3f', pale: '#e4f1e7' },
+  ardoise: { nom: 'Ardoise', fonce: '#37474f', pale: '#e8edef' },
+  bordeaux: { nom: 'Bordeaux', fonce: '#7a1f2b', pale: '#f6e4e6' },
+  nb: { nom: 'Noir et blanc', fonce: '#000000', pale: '#e6e6e6' },
+}
+/** En noir et blanc, une couleur de statut devient un gris de même clarté. */
+export function couleurDoc(hex: string, r: Pick<Reglages, 'palette'>): string {
+  if (r.palette !== 'nb') return hex
+  const n = parseInt(hex.replace('#', ''), 16)
+  const g = Math.round(0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255))
+  const v = Math.min(150, g).toString(16).padStart(2, '0')
+  return `#${v}${v}${v}`
 }
 
 export const LIBELLES = {

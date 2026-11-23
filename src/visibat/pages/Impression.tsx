@@ -3,7 +3,7 @@ import { signaler } from '../../composants/Ui'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { statutDe, useVisibat } from '../contexte'
 import { ORDRE_CATEGORIES, cumulAbsences, libelleType } from '../regles'
-import { REGLAGES_DEFAUT, completer, observationsExport, regrouper } from '../export/reglages'
+import { PALETTES, REGLAGES_DEFAUT, completer, couleurDoc, observationsExport, regrouper } from '../export/reglages'
 import { useDossier } from '../useDossier'
 import { nomComplet } from '../composants/FicheContact'
 import { dateFr, dateHeureFr, fonce } from '../ui'
@@ -55,15 +55,15 @@ export default function Impression() {
         }}>{word ? 'Préparation…' : 'Word (.docx)'}</button>
         <button type="button" className="bouton primaire" onClick={() => window.print()}>Imprimer</button>
       </div>
-      <article className="vb-feuille" ref={feuille}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, borderBottom: '2px solid #430742', paddingBottom: 8 }}>
+      <article className="vb-feuille" ref={feuille} style={{ ['--vb-fonce' as string]: PALETTES[r.palette].fonce, ['--vb-pale' as string]: PALETTES[r.palette].pale }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, borderBottom: '2px solid var(--vb-fonce)', paddingBottom: 8 }}>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
             <img src={`${import.meta.env.BASE_URL}logo-cherbourg.jpg`} alt="Ville de Cherbourg-en-Cotentin" style={{ height: 46 }} />
             <div><h1>Réunion de chantier n° {reunion.numero}</h1><div>{dateHeureFr(reunion.date_reunion)} · {reunion.lieu}</div></div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <strong>Direction Études Travaux Bâtiments</strong><br />Ville de Cherbourg-en-Cotentin<br />Rédacteur : {moi.nom}
-            {reunion.prochaine_date && <div style={{ color: '#b3261e', fontWeight: 700, marginTop: 4 }}>Prochaine réunion : {dateHeureFr(reunion.prochaine_date)}{reunion.prochaine_lieu ? ` – ${reunion.prochaine_lieu}` : ''}</div>}
+            {reunion.prochaine_date && <div style={{ color: r.palette === 'nb' ? '#000' : '#b3261e', fontWeight: 700, marginTop: 4 }}>Prochaine réunion : {dateHeureFr(reunion.prochaine_date)}{reunion.prochaine_lieu ? ` – ${reunion.prochaine_lieu}` : ''}</div>}
           </div>
         </div>
         <p><strong>{op.nom}</strong>{op.adresse && <><br />{op.adresse}</>}{op.objet && <><br />{op.objet}</>}</p>
@@ -75,7 +75,7 @@ export default function Impression() {
           return (
             <table key={cat} className="vb-fixe" style={{ marginTop: 8 }}>
               <colgroup><col style={{ width: '31%' }} /><col style={{ width: '19%' }} /><col style={{ width: '14%' }} /><col style={{ width: '24%' }} /><col style={{ width: '5%' }} /><col style={{ width: '3%' }} /><col style={{ width: '4%' }} /></colgroup>
-              <thead><tr style={{ background: '#f1e6f0' }}><th>{libelleType(cat).toUpperCase()}</th><th>Société</th><th>Téléphone</th><th>E-mail</th><th>État</th><th>C</th><th>Abs.</th></tr></thead>
+              <thead><tr style={{ background: 'var(--vb-pale)' }}><th>{libelleType(cat).toUpperCase()}</th><th>Société</th><th>Téléphone</th><th>E-mail</th><th>État</th><th>C</th><th>Abs.</th></tr></thead>
               <tbody>{liste.map((i) => {
                 const c = contacts.find((x) => x.id === i.contact_id)
                 const p = presence(i.id)
@@ -84,7 +84,7 @@ export default function Impression() {
                 return <tr key={i.id}>
                   <td>{lot && <>{lot.code} {lot.libelle}<br /></>}<b>{nomComplet(c)}</b>{c?.fonction ? ` – ${c.fonction}` : ''}</td>
                   <td>{c?.societe}</td><td style={{ whiteSpace: 'nowrap' }}>{c?.mobile ?? c?.telephone}</td><td>{c?.email}</td>
-                  <td style={{ color: p?.etat ? COUL[p.etat] : undefined, fontWeight: 700 }}>{p?.etat ?? ''}</td>
+                  <td style={{ color: p?.etat ? couleurDoc(COUL[p.etat], r) : undefined, fontWeight: 700 }}>{p?.etat ?? ''}</td>
                   <td>{p?.convoque ? '✓' : ''}</td><td>{n || ''}</td>
                 </tr>
               })}</tbody>
@@ -103,9 +103,9 @@ export default function Impression() {
               const charge = dossier.intervenants.find((i) => i.id === o.a_charge_de)
               const c = contacts.find((x) => x.id === charge?.contact_id)
               return (
-                <div key={`${g.cle}-${o.id}`} className="vb-item" style={{ ['--couleur' as string]: s?.couleur ?? '#999' }}>
+                <div key={`${g.cle}-${o.id}`} className="vb-item" style={{ ['--couleur' as string]: couleurDoc(s?.couleur ?? '#999999', r) }}>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <span style={{ color: s ? fonce(s.couleur) : undefined, fontWeight: 700 }}>{s?.libelle}</span>
+                    <span style={{ color: s ? fonce(couleurDoc(s.couleur, r)) : undefined, fontWeight: 700 }}>{s?.libelle}</span>
                     <span style={{ color: '#5c5560' }}>{o.date_statut ? `depuis le ${dateFr(o.date_statut)}` : ''}{o.cree_le ? `, créée le ${dateFr(o.cree_le)}` : ''}</span>
                     <span style={{ marginLeft: 'auto', background: '#2b2730', color: '#fff', padding: '0 6px', borderRadius: 4 }}>{o.numero}</span>
                   </div>

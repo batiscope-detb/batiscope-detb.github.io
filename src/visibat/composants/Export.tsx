@@ -5,7 +5,7 @@ import { useVisibat } from '../contexte'
 import { enregistrer, lireModeles, modifier, supprimer, type Dossier, type ModeleExport, type Reunion } from '../donnees'
 import { emailOutlook, nomFichier, objetCR, corpsCR, construireEml, telecharger } from '../diffusion'
 import { urlPhotoChantier } from '../useUrls'
-import { LIBELLES, completer, observationsExport, parEntreprise, regrouper, type Reglages } from '../export/reglages'
+import { LIBELLES, PALETTES, completer, observationsExport, parEntreprise, regrouper, type Reglages } from '../export/reglages'
 
 /** Export et diffusion du CR : modèles (dernier utilisé, personnels, de groupe, pré-configurés), roue crantée, PDF, brouillon Outlook. */
 export default function Export({ dossier, reunion, urls, recharger }: { dossier: Dossier; reunion: Reunion; urls: Map<string, string>; recharger: () => Promise<void> }) {
@@ -124,7 +124,7 @@ export default function Export({ dossier, reunion, urls, recharger }: { dossier:
   )
 }
 
-const resume = (r: Reglages) => [LIBELLES.classement[r.classement], LIBELLES.remarques[r.remarques].split(' (')[0].toLowerCase(), r.planning !== 'aucun' ? 'avec planning' : '', r.plans ? 'plans' : '', r.photos !== 'aucune' ? 'photos' : ''].filter(Boolean).join(' · ')
+const resume = (r: Reglages) => [LIBELLES.classement[r.classement], r.palette !== 'prune' ? PALETTES[r.palette].nom.toLowerCase() : '', LIBELLES.remarques[r.remarques].split(' (')[0].toLowerCase(), r.planning !== 'aucun' ? 'avec planning' : '', r.plans ? 'plans' : '', r.photos !== 'aucune' ? 'photos' : ''].filter(Boolean).join(' · ')
 
 function RoueCrantee({ modele, initial, fermer, appliquer, enregistrer, mettreAJour, retirer, groupes, planningDispo }: {
   modele: ModeleExport; initial: Reglages; fermer: () => void; appliquer: (r: Reglages) => void
@@ -147,6 +147,14 @@ function RoueCrantee({ modele, initial, fermer, appliquer, enregistrer, mettreAJ
       danger={retirer ? { libelle: 'Supprimer le modèle', action: retirer } : undefined}>
       <div className="pile">
         <div className="grille-2">{choixListe('remarques', 'Remarques incluses')}{choixListe('classement', 'Classement')}</div>
+        <div className="champ-form"><span>Couleurs du document</span>
+          <div className="vb-puces" role="radiogroup" aria-label="Couleurs du document">
+            {(Object.keys(PALETTES) as Reglages['palette'][]).map((k) => (
+              <button key={k} type="button" role="radio" aria-checked={r.palette === k} className="vb-puce vb-palette" aria-pressed={r.palette === k} onClick={() => setR({ ...r, palette: k })}>
+                <span className="vb-nuance" style={{ background: PALETTES[k].fonce }} /><span className="vb-nuance" style={{ background: PALETTES[k].pale }} />{PALETTES[k].nom}
+              </button>))}
+          </div>
+        </div>
         <div className="grille-2">{choixListe('photos', 'Photos')}{planningDispo ? choixListe('planning', 'Planning') : <p className="vb-discret">Planning : activez-le dans l’onglet Planning de l’opération pour pouvoir le joindre.</p>}</div>
         <div className="grille-2" style={{ gap: '4px 16px' }}>
           {caseR('garde', 'Page de garde')}{caseR('presences', 'Intervenants et présences')}

@@ -10,7 +10,7 @@ import { calculer, depuisISO, normaliser, nouveauPlanning } from '../planning/mo
 import { versAnnotation } from '../composants/Plans'
 import { imagePlan } from '../../rendrePlan'
 import type { Rubrique } from '../organisation'
-import type { Reglages } from './reglages'
+import { PALETTES, couleurDoc, type Reglages } from './reglages'
 
 export interface EntreePdf {
   dossier: Dossier; reunion: Reunion; reglages: Reglages; statuts: Statut[]; contacts: Contact[]
@@ -22,7 +22,6 @@ export interface EntreePdf {
 }
 
 const L = 595.28, H = 841.89, M = 40, LARGEUR = L - 2 * M
-const PRUNE = rgb(0x43 / 255, 0x07 / 255, 0x42 / 255), PRUNE_PALE = rgb(0xf1 / 255, 0xe6 / 255, 0xf0 / 255)
 const ENCRE = rgb(0.11, 0.106, 0.122), GRIS = rgb(0.36, 0.333, 0.376), FILET = rgb(0.85, 0.85, 0.85), ROUGE = rgb(0.702, 0.149, 0.118)
 const hex = (h: string): RGB => { const n = parseInt(h.replace('#', ''), 16); return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255) }
 const fonce = (h: string): RGB => { const n = parseInt(h.replace('#', ''), 16); const k = 0.72; return rgb((((n >> 16) & 255) * k) / 255, (((n >> 8) & 255) * k) / 255, ((n & 255) * k) / 255) }
@@ -30,6 +29,16 @@ const fonce = (h: string): RGB => { const n = parseInt(h.replace('#', ''), 16); 
 const propre = (t: string) => t.replace(/[→]/g, '->').replace(/[≤]/g, '<=').replace(/[≥]/g, '>=').replace(/[☑✓]/g, 'x').replace(/\t/g, ' ').replace(/[^\u0000-ÿŒœ‘’“”–—…€\n]/g, '?')
 const date = (iso: string | null | undefined) => iso ? new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('fr-FR') : ''
 const dateHeure = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+
+/** Version en niveaux de gris d'une image JPEG (logo en mode noir et blanc). */
+async function enGris(o: Uint8Array): Promise<Uint8Array> {
+  const img = await createImageBitmap(new Blob([o], { type: 'image/jpeg' }))
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height
+  const ctx = c.getContext('2d')!
+  ctx.filter = 'grayscale(1)'; ctx.drawImage(img, 0, 0)
+  const b = await new Promise<Blob>((ok, ko) => c.toBlob((x) => (x ? ok(x) : ko(new Error('Logo illisible'))), 'image/jpeg', 0.92))
+  return new Uint8Array(await b.arrayBuffer())
+}
 
 async function octets(url: string | undefined): Promise<Uint8Array | null> {
   if (!url) return null
@@ -39,10 +48,16 @@ async function octets(url: string | undefined): Promise<Uint8Array | null> {
 export async function genererPdf(e: EntreePdf): Promise<Blob> {
   const { dossier, reunion, reglages: r, statuts, contacts, urls } = e
   const op = dossier.operation
+  const teinte = PALETTES[r.palette] ?? PALETTES.prune
+  const PRUNE = hex(teinte.fonce), PRUNE_PALE = hex(teinte.pale)
+  const ROUGE_DOC = r.palette === 'nb' ? ENCRE : ROUGE
+  const nb = r.palette === 'nb'
+  const statutCouleur = (h: string) => couleurDoc(h, r)
   const doc = await PDFDocument.create()
   doc.setTitle(`Réunion de chantier n° ${reunion.numero} — ${op.nom}`); doc.setAuthor(e.redacteur); doc.setCreator('Visibat — DETB')
   const police = await doc.embedFont(StandardFonts.Helvetica), gras = await doc.embedFont(StandardFonts.HelveticaBold), italique = await doc.embedFont(StandardFonts.HelveticaOblique)
-  const logoOctets = await octets(`${import.meta.env.BASE_URL}logo-cherbourg.jpg`)
+  const logoBrut = await octets(`${import.meta.env.BASE_URL}logo-cherbourg.jpg`)
+  const logoOctets = logoBrut && nb ? await enGris(logoBrut).catch(() => logoBrut) : logoBrut
   const logo = logoOctets ? await doc.embedJpg(logoOctets).catch(() => null) : null
   const couverture = r.garde && e.photoCouverture ? await octets(e.photoCouverture).then((b) => (b ? doc.embedJpg(b).catch(() => null) : null)) : null
   const entete = `RÉUNION DE CHANTIER N° ${reunion.numero} — ${date(reunion.date_reunion)}`
@@ -55,7 +70,7 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
     let xEntete = M
     if (logo) { const hl = 16, ll = (logo.width / logo.height) * hl; page.drawImage(logo, { x: M, y: H - 31, width: ll, height: hl }); xEntete = M + ll + 10 }
     texte(propre(entete), xEntete, H - 27, 8, gras, GRIS)
-    if (prochaine) { const t = propre(prochaine); texte(t, L - M - police.widthOfTextAtSize(t, 8), H - 28, 8, police, ROUGE) }
+    if (prochaine) { const t = propre(prochaine); texte(t, L - M - police.widthOfTextAtSize(t, 8), H - 28, 8, police, ROUGE_DOC) }
     page.drawLine({ start: { x: M, y: H - 34 }, end: { x: L - M, y: H - 34 }, thickness: 0.5, color: FILET })
     y = H - 50
   }
@@ -111,7 +126,7 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
     if (prochaine) {
       centre('Prochaine réunion', 150, 12, gras, ENCRE)
       const t = `${dateHeure(reunion.prochaine_date)}${reunion.prochaine_lieu ? ` – ${reunion.prochaine_lieu}` : ''}`
-      centre(t, 134, 12, gras, ROUGE)
+      centre(t, 134, 12, gras, ROUGE_DOC)
     }
     texte(`Rédacteur : ${e.redacteur}`, M, 60, 9, police, GRIS)
   }
@@ -151,9 +166,9 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
         texte(c?.mobile ?? c?.telephone ?? '', M + 3 + cols[2], y - 9, 7.5)
         texte(couper(c?.email ?? '', police, 7, 117), M + 3 + cols[3], y - 9, 7)
         const et = ETATS.find((x) => x.code === p?.etat)
-        if (et) texte(et.code, M + 6 + cols[4], y - 9, 8, gras, hex(et.couleur))
+        if (et) texte(et.code, M + 6 + cols[4], y - 9, 8, gras, hex(statutCouleur(et.couleur)))
         if (p?.convoque) texte('x', M + 6 + cols[5], y - 9, 8, gras)
-        if (n) texte(String(n), M + 6 + cols[6], y - 9, 8, gras, n >= 2 ? ROUGE : ENCRE)
+        if (n) texte(String(n), M + 6 + cols[6], y - 9, 8, gras, n >= 2 && !nb ? ROUGE : ENCRE)
         y -= h
         page.drawLine({ start: { x: M, y }, end: { x: L - M, y }, thickness: 0.4, color: FILET })
       }
@@ -184,7 +199,7 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
         const lot = pl.lots.find((l) => l.id === (t.lotId ?? pl.taches.find((p) => p.id === t.parentId)?.lotId))
         const a = px(x.debut), b = Math.max(a + 2, px(new Date(x.fin.getTime() + 86400000)))
         if (t.duree === 0) page.drawSvgPath('M 0 -4 L 4 0 L 0 4 L -4 0 Z', { x: a, y: y - 6.5, color: ENCRE })
-        else page.drawRectangle({ x: a, y: y - 10, width: b - a, height: 7, color: hex(lot?.couleur ?? '#90a4ae'), borderColor: x.critique ? ROUGE : undefined, borderWidth: x.critique ? 1 : 0 })
+        else page.drawRectangle({ x: a, y: y - 10, width: b - a, height: 7, color: hex(nb ? '#9e9e9e' : lot?.couleur ?? '#90a4ae'), borderColor: x.critique ? (nb ? ENCRE : ROUGE) : undefined, borderWidth: x.critique ? 1 : 0 })
         y -= 13
         page.drawLine({ start: { x: M, y }, end: { x: L - M, y }, thickness: 0.3, color: FILET })
       }
@@ -225,7 +240,7 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
       if (g.sousTitre) paragraphe(g.sousTitre, M + 8, LARGEUR - 8, 7.5, police, GRIS)
       for (const o of g.observations) {
         const s = statuts.find((x) => x.code === o.statut_code)
-        const couleur = s?.couleur ?? '#999999'
+        const couleur = statutCouleur(s?.couleur ?? '#999999')
         const corps = lignes(o.texte, police, 9.5, LARGEUR - 20)
         const charge = dossier.intervenants.find((i) => i.id === o.a_charge_de)
         const cc = contacts.find((x) => x.id === charge?.contact_id)
@@ -295,7 +310,7 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
       const u = urls.get(`${pl.bucket}:${pl.storage_path}`)
       if ((!pos.length && !anns.length) || !u) continue
       try {
-        const reperes = pos.map((p) => { const o = e.observations.find((x) => x.id === p.observation_id)!; return { id: p.id, x: p.x, y: p.y, texte: o.numero, titre: o.numero, couleur: statuts.find((s) => s.code === o.statut_code)?.couleur } })
+        const reperes = pos.map((p) => { const o = e.observations.find((x) => x.id === p.observation_id)!; const c = statuts.find((s) => s.code === o.statut_code)?.couleur; return { id: p.id, x: p.x, y: p.y, texte: o.numero, titre: o.numero, couleur: c ? statutCouleur(c) : undefined } })
         const rendu = await imagePlan(u, pl.page_index, reperes, anns, 2200)
         const b = await octets(rendu.url); URL.revokeObjectURL(rendu.url)
         if (!b) continue
