@@ -5,7 +5,8 @@ import { FicheAnnotation, Palette } from '../../pages/fiche/Plans'
 import { COULEURS_ANNOTATION, FAMILLES, symboleParId, type Symbole } from '../../symboles'
 import type { Annotation } from '../../donnees'
 import { BoutonFichier, Champ, Dialogue, executer } from '../../composants/Ui'
-import { deposerFichier, nombrePages, preparerPlan } from '../../ecriture'
+import { nombrePages, preparerPlan } from '../../ecriture'
+import { deposer } from '../horsligne'
 import { statutDe, useVisibat } from '../contexte'
 import { BUCKET, enregistrer, modifier, plansDuBatiment, supprimer, type Dossier, type Observation, type Plan as PlanVb, type PlanAnnotation } from '../donnees'
 import { urlPlan } from '../useUrls'
@@ -31,7 +32,7 @@ export function GestionPlans({ dossier, recharger, urls }: { dossier: Dossier; r
   async function envoyer(pdf: Blob, libelle: string, page: number) {
     const chemin = `${op.id}/plans/${crypto.randomUUID()}.pdf`
     const ok = await executer(async () => {
-      await deposerFichier(BUCKET, chemin, pdf, 'application/pdf')
+      await deposer(BUCKET, chemin, pdf, 'application/pdf')
       return enregistrer('plan', { operation_id: op.id, libelle, storage_path: chemin, page_index: page, ordre: dossier.plans.length, bucket: BUCKET })
     }, 'Plan importé')
     if (ok) { setChoixPage(null); await recharger() }

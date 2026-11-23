@@ -5,6 +5,7 @@
  */
 import { supabase } from '../donnees'
 import type { StatutDef } from './regles'
+import { ecrireOuDiffere, lireAvecCopie, lireFile, superposer } from './horsligne'
 
 export const vb = () => supabase.schema('visibat')
 
@@ -68,27 +69,35 @@ async function tout<T>(fabrique: () => Requete): Promise<T[]> {
     if (!data || data.length < PAGE) return res
   }
 }
-const actifs = <T extends { supprime_le?: string | null }>(l: T[]) => l.filter((x) => !x.supprime_le)
 
 export interface ModeleExport extends Base { nom: string; description: string | null; portee: 'systeme' | 'groupe' | 'perso' | 'dernier'; proprietaire_id: string | null; groupe_id: string | null; reglages: unknown; ordre: number }
-export const lireModeles = () => tout<ModeleExport>(() => vb().from('modele_export').select('*').is('supprime_le', null).order('ordre'))
-export const lireStatuts = () => tout<Statut>(() => vb().from('statut').select('*').is('supprime_le', null).order('ordre'))
-export const lireAgents = () => tout<Agent>(() => supabase.schema('releves').from('agent').select('id,nom,email,role,actif').order('nom'))
-export const lireContacts = () => tout<Contact>(() => vb().from('contact').select('*').is('supprime_le', null).order('nom'))
-export const lireGroupes = async () => ({
-  groupes: await tout<Groupe>(() => vb().from('groupe').select('*').is('supprime_le', null).order('nom')),
-  membres: await tout<GroupeMembre>(() => vb().from('groupe_membre').select('*').is('supprime_le', null)),
-})
-export const lireOperations = () => tout<Operation>(() => vb().from('operation').select('*').is('supprime_le', null).order('nom'))
-/** Réunions de toutes les opérations (pour l'accueil : prochaine réunion, numéro). */
-export const lireToutesReunions = () => tout<Reunion>(() => vb().from('reunion').select('id,operation_id,numero,date_reunion,prochaine_date,statut,supprime_le').is('supprime_le', null))
-export const lireBatiments = async () => {
-  const { data, error } = await supabase.schema('releves').from('projet').select('id,nom,adresse,photo_path').is('supprime_le', null).order('nom')
-  if (error) throw new Error(error.message)
-  return (data ?? []) as { id: string; nom: string; adresse: string | null; photo_path: string | null }[]
-}
 
-export async function chargerDossier(operationId: string): Promise<Dossier> {
+/** Lecture d'une table entière : copie gardée sur l'appareil + écritures en attente superposées. */
+async function liste<T extends { id: string }>(cle: string, table: string, f: () => Promise<T[]>): Promise<T[]> {
+  const v = await lireAvecCopie(cle, f)
+  return superposer(await lireFile(), table, v)
+}
+export const lireModeles = () => liste<ModeleExport>('modeles', 'modele_export', () => tout(() => vb().from('modele_export').select('*').is('supprime_le', null).order('ordre')))
+export const lireStatuts = () => liste<Statut>('statuts', 'statut', () => tout(() => vb().from('statut').select('*').is('supprime_le', null).order('ordre')))
+export const lireAgents = () => lireAvecCopie('agents', () => tout<Agent>(() => supabase.schema('releves').from('agent').select('id,nom,email,role,actif').order('nom')))
+export const lireContacts = async () => (await liste<Contact>('contacts', 'contact', () => tout(() => vb().from('contact').select('*').is('supprime_le', null).order('nom'))))
+  .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+export const lireGroupes = async () => ({
+  groupes: await liste<Groupe>('groupes', 'groupe', () => tout(() => vb().from('groupe').select('*').is('supprime_le', null).order('nom'))),
+  membres: await liste<GroupeMembre>('membres', 'groupe_membre', () => tout(() => vb().from('groupe_membre').select('*').is('supprime_le', null))),
+})
+export const lireOperations = async () => (await liste<Operation>('operations', 'operation', () => tout(() => vb().from('operation').select('*').is('supprime_le', null).order('nom'))))
+  .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+/** Réunions de toutes les opérations (pour l'accueil : prochaine réunion, numéro). */
+export const lireToutesReunions = () => liste<Reunion>('reunions', 'reunion', () => tout(() => vb().from('reunion').select('id,operation_id,numero,date_reunion,prochaine_date,statut,supprime_le').is('supprime_le', null)))
+/** Bâtiments du patrimoine Batiscope (pour rattacher une opération). */
+export const lireBatiments = () => lireAvecCopie('batiments', async () => {
+  const { data, error } = await supabase.schema('releves').from('projet').select('id,nom,adresse,photo_path,maj_le').is('supprime_le', null).order('nom')
+  if (error) throw new Error(error.message)
+  return (data ?? []) as { id: string; nom: string; adresse: string | null; photo_path: string | null; maj_le: string | null }[]
+})
+
+async function chargerDossierServeur(operationId: string): Promise<Dossier> {
   const { data: op, error } = await vb().from('operation').select('*').eq('id', operationId).single()
   if (error) throw new Error(error.message)
   const parOp = <T,>(table: string) => tout<T>(() => vb().from(table).select('*').eq('operation_id', operationId))
@@ -115,34 +124,74 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
     parListe<PlanAnnotation>('plan_annotation', 'plan_id', idsP),
   ])
   return {
-    operation: op as Operation,
-    lots: actifs(lots).sort((a, b) => a.ordre - b.ordre || a.code.localeCompare(b.code, 'fr', { numeric: true })),
-    intervenants: actifs(intervenants).sort((a, b) => a.ordre - b.ordre),
-    reunions: actifs(reunions).sort((a, b) => a.numero - b.numero),
-    presences: actifs(presences), observations: actifs(observations), obsLots: actifs(obsLots), obsIntervenants: actifs(obsIntervenants),
-    suivis: actifs(suivis), checklists: actifs(checklists).sort((a, b) => a.ordre - b.ordre), commentaires: actifs(commentaires),
-    plans: actifs(plans).sort((a, b) => a.ordre - b.ordre), positions: actifs(positions).map((p) => ({ ...p, x: Number(p.x), y: Number(p.y) })),
-    photos: actifs(photos).sort((a, b) => a.ordre - b.ordre), annotations: actifs(annotations),
+    operation: op as Operation, lots, intervenants, reunions, presences, observations, obsLots, obsIntervenants,
+    suivis, checklists, commentaires, plans, positions, photos, annotations,
   }
 }
 
+/** Écritures en attente superposées, lignes supprimées retirées, tris. */
+export function finaliserDossier(d: Dossier, file: Parameters<typeof superposer>[0]): Dossier {
+  const id = d.operation.id
+  const [operation] = superposer(file, 'operation', [d.operation])
+  const lots = superposer(file, 'lot', d.lots, (l) => l.operation_id === id)
+  const intervenants = superposer(file, 'intervenant', d.intervenants, (l) => l.operation_id === id)
+  const reunions = superposer(file, 'reunion', d.reunions, (l) => l.operation_id === id)
+  const plans = superposer(file, 'plan', d.plans, (l) => l.operation_id === id)
+  const observations = superposer(file, 'observation', d.observations, (l) => l.operation_id === id)
+  const R = new Set(reunions.map((x) => x.id)); const O = new Set(observations.map((x) => x.id)); const P = new Set(plans.map((x) => x.id))
+  const parObs = (l: Record<string, unknown>) => O.has(l.observation_id as string)
+  return {
+    operation: operation ?? d.operation,
+    lots: lots.sort((a, b) => a.ordre - b.ordre || a.code.localeCompare(b.code, 'fr', { numeric: true })),
+    intervenants: intervenants.sort((a, b) => a.ordre - b.ordre),
+    reunions: reunions.sort((a, b) => a.numero - b.numero),
+    presences: superposer(file, 'presence', d.presences, (l) => R.has(l.reunion_id as string)),
+    observations,
+    obsLots: superposer(file, 'observation_lot', d.obsLots, parObs),
+    obsIntervenants: superposer(file, 'observation_intervenant', d.obsIntervenants, parObs),
+    suivis: superposer(file, 'observation_suivi', d.suivis, parObs),
+    checklists: superposer(file, 'observation_checklist', d.checklists, parObs).sort((a, b) => a.ordre - b.ordre),
+    commentaires: superposer(file, 'observation_commentaire', d.commentaires, parObs),
+    plans: plans.sort((a, b) => a.ordre - b.ordre),
+    positions: superposer(file, 'observation_position', d.positions, parObs).map((p) => ({ ...p, x: Number(p.x), y: Number(p.y) })),
+    photos: superposer(file, 'observation_photo', d.photos, parObs).sort((a, b) => a.ordre - b.ordre),
+    annotations: superposer(file, 'plan_annotation', d.annotations, (l) => P.has(l.plan_id as string)),
+  }
+}
+
+/** Tout le contenu d'une opération ; gardé sur l'appareil pour la saisie hors ligne. */
+export async function chargerDossier(operationId: string): Promise<Dossier> {
+  const d = await lireAvecCopie(`dossier:${operationId}`, () => chargerDossierServeur(operationId))
+  return finaliserDossier(d, await lireFile())
+}
+
 // --- Écriture -------------------------------------------------------------------------------
-/** Insère ou met à jour une ligne (l'identifiant est créé côté appli pour fonctionner hors ligne plus tard). */
+// Hors ligne, l'écriture est mise en file et la ligne locale est rendue : l'écran se met à jour tout de suite.
+/** Insère ou met à jour une ligne (l'identifiant est créé côté appli, ce qui permet la saisie hors ligne). */
 export async function enregistrer<R = Record<string, unknown>>(table: string, ligne: Record<string, unknown>): Promise<R & { id: string }> {
   const l = { ...ligne, id: (ligne.id as string | undefined) ?? crypto.randomUUID(), maj_le: new Date().toISOString() }
-  const { data, error } = await vb().from(table).upsert(l).select().single()
-  if (error) throw new Error(error.message)
-  return data as R & { id: string }
+  const r = await ecrireOuDiffere({ genre: 'enregistrer', table, id: l.id, ligne: l }, async () => {
+    const { data, error } = await vb().from(table).upsert(l).select().single()
+    if (error) throw new Error(error.message)
+    return data as R & { id: string }
+  })
+  return r ?? (l as unknown as R & { id: string })
 }
 /** Mise à jour partielle d'une ligne existante. */
 export async function modifier(table: string, id: string, champs: Record<string, unknown>) {
-  const { error } = await vb().from(table).update({ ...champs, maj_le: new Date().toISOString() }).eq('id', id)
-  if (error) throw new Error(error.message)
+  const c = { ...champs, maj_le: new Date().toISOString() }
+  await ecrireOuDiffere({ genre: 'modifier', table, id, ligne: c }, async () => {
+    const { error } = await vb().from(table).update(c).eq('id', id)
+    if (error) throw new Error(error.message)
+  })
 }
 /** Suppression logique. */
 export async function supprimer(table: string, id: string) {
-  const { error } = await vb().from(table).update({ supprime_le: new Date().toISOString(), maj_le: new Date().toISOString() }).eq('id', id)
-  if (error) throw new Error(error.message)
+  const c = { supprime_le: new Date().toISOString(), maj_le: new Date().toISOString() }
+  await ecrireOuDiffere({ genre: 'supprimer', table, id, ligne: c }, async () => {
+    const { error } = await vb().from(table).update(c).eq('id', id)
+    if (error) throw new Error(error.message)
+  })
 }
 
 // --- Fichiers ---------------------------------------------------------------------------------

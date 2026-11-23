@@ -22,6 +22,11 @@ interface Ctx { donnees: Donnees | null; erreur: string | null; recharger: () =>
 const ContexteDonnees = createContext<Ctx>({ donnees: null, erreur: null, recharger: () => {}, nomAgent: '', modifier: () => {}, edition: false, role: 'agent' })
 export const useDonnees = () => useContext(ContexteDonnees)
 
+/** Dernière session enregistrée par le navigateur (lecture seule, pour le travail hors ligne). */
+function sessionStockee(): Session | null {
+  try { return JSON.parse(localStorage.getItem('releves-detb-bureau') ?? 'null') as Session | null } catch { return null }
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [donnees, setDonnees] = useState<Donnees | null>(null)
@@ -33,8 +38,10 @@ export default function App() {
   const basculerEdition = () => { const v = !edition; setEdition(v); reglages.definirEdition(v) }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    // Hors ligne avec un jeton expiré, getSession ne rend rien : on reprend la dernière session connue sur l'appareil
+    // pour laisser Visibat travailler hors ligne (les envois attendront le retour du réseau et la reconnexion).
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? (!navigator.onLine ? sessionStockee() : null)))
+    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s ?? (!navigator.onLine ? sessionStockee() : null)))
     return () => data.subscription.unsubscribe()
   }, [])
 
@@ -55,7 +62,14 @@ export default function App() {
   useEffect(() => {
     if (!session) { setDonnees(null); setProfil(undefined); return }
     supabase.schema('releves').from('agent').select('nom,role,actif').eq('id', session.user.id).maybeSingle()
-      .then(({ data }) => {
+      .then(({ data: lu, error }) => {
+        // Profil gardé sur l'appareil pour ouvrir l'application sans réseau.
+        const cle = `batiscope-profil:${session.user.id}`
+        let data = lu as { nom: string; role: string; actif: boolean } | null
+        try {
+          if (!error && data) localStorage.setItem(cle, JSON.stringify(data))
+          else if (error) data = JSON.parse(localStorage.getItem(cle) ?? 'null')
+        } catch { /* stockage indisponible */ }
         setNomAgent((data?.nom as string | undefined) ?? session.user.email ?? '')
         setProfil(data ? { role: data.role as string, actif: !!data.actif } : null)
         if (data?.actif && !provisoire) {
@@ -110,20 +124,23 @@ export default function App() {
           <button type="button" className="pastille" style={{ border: 'none', color: '#fff', cursor: 'pointer' }} title={`${nomAgent} — paramètres`} onClick={() => setParametres(true)}>{initiales || '?'}</button>
         </div>
       </header>
-      {erreur && <main className="page"><p className="erreur">Impossible de charger les données : {erreur}</p></main>}
-      {!donnees && !erreur && <div className="chargement"><span className="roue" />Chargement du patrimoine…</div>}
-      {donnees && (
-        <Routes>
-          <Route path="/" element={<TableauDeBord />} />
-          <Route path="/erp/:id" element={<FicheErp />} />
-          <Route path="/referentiel" element={<Referentiel />} />
-          <Route path="/rapport/:id/:genre" element={<Rapport />} />
-          <Route path="/notice/:id" element={<Notice />} />
-          <Route path="/registre/:id" element={<RegistreEdition />} />
-          <Route path="/visibat/*" element={<Visibat />} />
-          <Route path="*" element={<main className="page"><p>Page introuvable. <Link to="/">Retour au tableau de bord</Link></p></main>} />
-        </Routes>
-      )}
+      <Routes>
+        {/* Visibat fonctionne aussi hors ligne : il ne dépend pas du chargement du patrimoine. */}
+        <Route path="/visibat/*" element={<Visibat />} />
+        <Route path="*" element={
+          erreur ? <main className="page"><p className="erreur">{navigator.onLine ? `Impossible de charger les données : ${erreur}` : 'Hors connexion : le patrimoine n’est pas disponible. Visibat reste utilisable (saisie conservée sur l’appareil).'}
+            {!navigator.onLine && <> <Link to="/visibat">Ouvrir Visibat</Link></>}</p></main>
+            : !donnees ? <div className="chargement"><span className="roue" />Chargement du patrimoine…</div>
+              : <Routes>
+                <Route index element={<TableauDeBord />} />
+                <Route path="erp/:id" element={<FicheErp />} />
+                <Route path="referentiel" element={<Referentiel />} />
+                <Route path="rapport/:id/:genre" element={<Rapport />} />
+                <Route path="notice/:id" element={<Notice />} />
+                <Route path="registre/:id" element={<RegistreEdition />} />
+                <Route path="*" element={<main className="page"><p>Page introuvable. <Link to="/">Retour au tableau de bord</Link></p></main>} />
+              </Routes>} />
+      </Routes>
       <Notifications />
       <Parametres ouvert={parametres} fermer={() => setParametres(false)} moi={moi} renommer={setNomAgent} />
       <footer className="pied">Batiscope v{__VERSION__} — Direction Études et Travaux Bâtiments</footer>

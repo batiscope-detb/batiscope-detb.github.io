@@ -8,7 +8,14 @@ import Carnet from './pages/Carnet'
 import PageOperation from './pages/Operation'
 import PageReunion from './pages/Reunion'
 import Impression from './pages/Impression'
+import EtatHorsLigne from './composants/EtatHorsLigne'
+import { demarrerSynchro } from './horsligne'
 import './visibat.css'
+
+/** Utilisateur de la dernière session gardée par le navigateur (hors ligne, quand le jeton a expiré). */
+function utilisateurStocke(): { id: string } | null {
+  try { return (JSON.parse(localStorage.getItem('releves-detb-bureau') ?? 'null')?.user as { id: string } | undefined) ?? null } catch { return null }
+}
 
 /** Module Visibat (visites et comptes rendus de chantier) dans Batiscope : routes /visibat/… */
 export default function Visibat() {
@@ -28,7 +35,10 @@ export default function Visibat() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase.auth.getUser()
+        demarrerSynchro()
+        // Session lue sur l'appareil (getUser interrogerait le serveur, impossible hors ligne).
+        const { data: { session } } = await supabase.auth.getSession()
+        const data = { user: session?.user ?? utilisateurStocke() }
         const [ag] = await Promise.all([lireAgents(), rechargerReferentiels(), rechargerContacts()])
         setAgents(ag)
         setMoi(ag.find((a) => a.id === data.user?.id) ?? null)
@@ -48,6 +58,7 @@ export default function Visibat() {
         <Route path="operation/:id/reunion/:reunionId/impression" element={<Impression />} />
         <Route path="*" element={<main className="page"><p>Page introuvable. <Link to="/visibat">Retour à Visibat</Link></p></main>} />
       </Routes>
+      <EtatHorsLigne />
     </ContexteVisibat.Provider>
   )
 }

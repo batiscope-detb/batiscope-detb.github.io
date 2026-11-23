@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { chargerDossier, type Dossier } from './donnees'
+import { quandSynchronise } from './horsligne'
 
 /** Charge une opération et tout son contenu ; recharger() relit après une écriture. */
 export function useDossier(id: string | undefined) {
@@ -10,5 +11,7 @@ export function useDossier(id: string | undefined) {
     try { setDossier(await chargerDossier(id)); setErreur(null) } catch (e) { setErreur((e as Error).message) }
   }, [id])
   useEffect(() => { setDossier(null); recharger() }, [recharger])
+  // Les écritures faites hors ligne viennent d'arriver au serveur : on relit la version de référence.
+  useEffect(() => quandSynchronise(() => { void recharger() }), [recharger])
   return { dossier, erreur, recharger }
 }

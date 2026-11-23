@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { statutDe, useVisibat } from '../contexte'
 import { BUCKET, enregistrer, modifier, supprimer, type Dossier, type Observation, type Reunion } from '../donnees'
-import { deposerFichier, preparerPhoto } from '../../ecriture'
+import { preparerPhoto } from '../../ecriture'
+import { deposer } from '../horsligne'
 import { Photos } from '../../composants/Photos'
 import { urlPhoto } from '../useUrls'
 import { libelleType, prochainNumero } from '../regles'
@@ -89,7 +90,7 @@ export default function FicheObservation({ dossier, reunion, observation, ouvert
 
   async function envoyerPhoto(observationId: string, fichier: File, ordre: number) {
     const chemin = `${dossier.operation.id}/photos/${observationId}/${crypto.randomUUID()}.jpg`
-    await deposerFichier(BUCKET, chemin, await preparerPhoto(fichier), 'image/jpeg')
+    await deposer(BUCKET, chemin, await preparerPhoto(fichier), 'image/jpeg')
     await enregistrer('observation_photo', { observation_id: observationId, storage_path: chemin, ordre })
   }
   async function ajouterPhotos(fichiers: File[]) {

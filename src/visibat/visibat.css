@@ -95,3 +95,12 @@ table.vb-fixe td, table.vb-fixe th { overflow: hidden; text-overflow: ellipsis; 
 
 .vb-palette { display: inline-flex; align-items: center; gap: 6px; }
 .vb-nuance { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
+
+/* Saisie hors ligne */
+.vb-horsligne { position: fixed; left: 14px; bottom: 14px; z-index: 50; display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 999px;
+  border: 1px solid var(--bord); background: var(--carte); color: var(--encre); font-size: 13px; box-shadow: 0 2px 10px rgba(0,0,0,.12); cursor: pointer; }
+.vb-horsligne-point { width: 9px; height: 9px; border-radius: 50%; background: #2e7d32; }
+.vb-horsligne.coupe .vb-horsligne-point { background: #ef6c00; }
+.vb-horsligne.erreur { border-color: #c62828; }
+.vb-horsligne.erreur .vb-horsligne-point { background: #c62828; }
+@media print { .vb-horsligne { display: none; } }

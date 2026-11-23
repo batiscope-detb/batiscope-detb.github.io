@@ -5,6 +5,7 @@ import { enregistrer, lireBatiments, lireOperations, lireToutesReunions, type Op
 import { Champ, Dialogue, executer } from '../../composants/Ui'
 import Entete from '../composants/Entete'
 import { dateHeureFr } from '../ui'
+import { preparerHorsLigne } from '../useUrls'
 
 type Vue = 'miens' | 'groupe' | 'tous'
 const lireVue = (): Vue => { try { return (localStorage.getItem('visibat-vue') as Vue) || 'miens' } catch { return 'miens' } }
@@ -22,8 +23,13 @@ export default function Chantiers() {
   const [creation, setCreation] = useState(false)
 
   useEffect(() => {
-    Promise.all([lireOperations(), lireToutesReunions()]).then(([o, r]) => { setOps(o); setReunions(r) }).catch((e: Error) => setErreur(e.message))
-  }, [])
+    Promise.all([lireOperations(), lireToutesReunions()]).then(([o, r]) => {
+      setOps(o); setReunions(r)
+      // Opérations en cours de l'agent et de ses groupes : copiées sur l'appareil pour travailler sans réseau.
+      const g = new Set(membres.filter((m) => m.agent_id === moi.id).map((m) => m.groupe_id))
+      void preparerHorsLigne(o.filter((x) => !x.archive && (x.proprietaire_id === moi.id || (!!x.groupe_id && g.has(x.groupe_id)))).map((x) => x.id))
+    }).catch((e: Error) => setErreur(e.message))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const mesGroupes = useMemo(() => new Set(membres.filter((m) => m.agent_id === moi.id).map((m) => m.groupe_id)), [membres, moi.id])
   const visibles = (ops ?? []).filter((o) => o.archive === archives).filter((o) =>

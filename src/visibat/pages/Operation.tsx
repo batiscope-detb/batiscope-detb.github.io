@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useVisibat } from '../contexte'
 import { BUCKET, enregistrer, lireBatiments, modifier, supprimer, type Dossier, type Intervenant, type Lot } from '../donnees'
-import { deposerFichier, preparerPhoto } from '../../ecriture'
+import { deposerFichier, ecrire, preparerPhoto } from '../../ecriture'
+import { supabase } from '../../donnees'
+import { deposer } from '../horsligne'
 import { ORDRE_CATEGORIES, TYPES_INTERVENANT, libelleType } from '../regles'
 import { useDossier } from '../useDossier'
 import FicheContact, { nomComplet } from '../composants/FicheContact'
@@ -222,9 +224,25 @@ function Fiche({ dossier, recharger }: { dossier: Dossier; recharger: () => Prom
   useEffect(() => { urlPhotoChantier(op, batiments).then(setPhoto).catch(() => setPhoto(null)) }, [op.photo_path, op.projet_id, batiments]) // eslint-disable-line react-hooks/exhaustive-deps
   const mesGroupes = groupes.filter((g) => g.id === op.groupe_id || membres.some((m) => m.groupe_id === g.id && m.agent_id === moi.id))
   const maj = async (champs: Record<string, unknown>) => { if (await executer(() => modifier('operation', op.id, champs).then(() => true), 'Enregistré')) await recharger() }
-  async function changerPhoto(f: File) {
+  const batiment = batiments.find((b) => b.id === op.projet_id)
+  /** Rattachée à un bâtiment, la photo est celle de Batiscope : la changer ici la change aussi sur la fiche du bâtiment. */
+  async function changerPhoto(f: File | null) {
+    if (batiment) {
+      if (!f && !window.confirm('Retirer la photo du bâtiment (dans Batiscope aussi) ?')) return
+      const ancien = batiment.photo_path
+      const ok = await executer(async () => {
+        let chemin: string | null = null
+        if (f) { chemin = `${batiment.id}/batiment-${Date.now()}.jpg`; await deposerFichier('photos-releves', chemin, await preparerPhoto(f), 'image/jpeg') }
+        await ecrire('releves', 'projet', { photo_path: chemin }, { cle: { id: batiment.id }, majLeConnue: batiment.maj_le })
+        if (ancien && ancien !== chemin) await supabase.storage.from('photos-releves').remove([ancien]).catch(() => undefined)
+        return true
+      }, f ? 'Photo du bâtiment enregistrée' : 'Photo retirée')
+      if (ok) setBatiments(await lireBatiments())
+      return
+    }
+    if (!f) { await maj({ photo_path: null }); return }
     const chemin = `${op.id}/couverture-${crypto.randomUUID()}.jpg`
-    if (await executer(async () => { await deposerFichier(BUCKET, chemin, await preparerPhoto(f), 'image/jpeg'); return true })) await maj({ photo_path: chemin })
+    if (await executer(async () => { await deposer(BUCKET, chemin, await preparerPhoto(f), 'image/jpeg'); return true })) await maj({ photo_path: chemin })
   }
   const texte = (k: 'nom' | 'objet' | 'adresse', l: string) => (
     <Champ libelle={l}><input className="champ" defaultValue={op[k] ?? ''} onBlur={(e) => e.target.value !== (op[k] ?? '') && maj({ [k]: e.target.value || (k === 'nom' ? op.nom : null) })} /></Champ>)
@@ -234,8 +252,9 @@ function Fiche({ dossier, recharger }: { dossier: Dossier; recharger: () => Prom
         <div className="pile" style={{ gap: 6, width: 220 }}>
           {photo ? <img src={photo} alt="Photo du chantier" style={{ width: 220, height: 150, objectFit: 'cover', borderRadius: 10 }} />
             : <div className="vignette-vide" style={{ width: 220, height: 150, borderRadius: 10 }}>Pas de photo</div>}
-          <BoutonFichier className="bouton petit" libelle={op.photo_path ? 'Changer la photo' : 'Photo de couverture du CR'} accept="image/*" choisir={([f]) => changerPhoto(f)} />
-          {op.photo_path && <button type="button" className="bouton petit" onClick={() => maj({ photo_path: null })}>{op.projet_id ? 'Reprendre la photo du bâtiment' : 'Retirer la photo'}</button>}
+          {op.projet_id && <span className="aide" style={{ fontSize: 12, color: 'var(--encre-2)' }}>Photo du bâtiment, partagée avec Batiscope.</span>}
+          <BoutonFichier className="bouton petit" libelle={photo ? 'Changer la photo' : 'Ajouter une photo'} accept="image/*" choisir={([f]) => changerPhoto(f)} />
+          {photo && <button type="button" className="bouton petit danger" onClick={() => changerPhoto(null)}>Retirer</button>}
         </div>
         <div className="pile" style={{ flex: 1, minWidth: 260 }}>
           <Champ libelle="Bâtiment du patrimoine Batiscope" aide="Facultatif. Sans rattachement, l'opération reste hors patrimoine.">
