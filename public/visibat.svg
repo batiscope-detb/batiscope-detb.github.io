@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 12 184 184" role="img" aria-label="Visibat">
+<title>Visibat</title><defs><clipPath id="v"><circle cx="88" cy="88" r="46"/></clipPath></defs>
+<circle cx="88" cy="88" r="50" fill="#FFFFFF"/>
+<g clip-path="url(#v)">
+<rect x="30" y="30" width="120" height="120" fill="#FFFFFF"/>
+<rect x="62" y="52" width="6" height="58" fill="#400241"/><rect x="44" y="52" width="70" height="6" fill="#400241"/>
+<rect x="44" y="58" width="10" height="8" fill="#400241"/><rect x="104" y="58" width="2" height="18" fill="#400241"/>
+<rect x="100" y="76" width="10" height="5" fill="#F5B21A"/>
+<path d="M80 112 V84 L100 74 L120 84 V112 Z" fill="#7E2E8E"/>
+<rect x="88" y="90" width="7" height="8" fill="#FFFFFF"/><rect x="104" y="90" width="7" height="8" fill="#FFFFFF"/>
+<path d="M30 106 Q70 92 110 102 T150 98 V150 H30 Z" fill="#4A9BD4"/>
+<path d="M30 118 Q78 102 150 110 V150 H30 Z" fill="#F5B21A"/>
+<path d="M30 130 Q90 114 150 122 V150 H30 Z" fill="#A6C83C"/>
+</g>
+<path d="M125.9 142.1 L153.4 181.4" stroke="#400241" stroke-width="20" stroke-linecap="round"/>
+<path d="M137.5 38.5 A70 70 0 1 0 147.4 125.1 A10 10 0 0 0 130.4 114.5 A50 50 0 1 1 123.4 52.6 Z" fill="#400241"/>
+</svg>

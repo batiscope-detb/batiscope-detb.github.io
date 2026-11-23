@@ -1,0 +1,45 @@
+/* Visibat — compléments aux styles de Batiscope (classes préfixées vb-). Les couleurs suivent le thème choisi. */
+.vb-titre { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.vb-titre > div:first-child { flex: 1; min-width: 240px; }
+.vb-titre h1 { display: flex; align-items: center; gap: 10px; }
+.vb-fil { font-size: 13px; color: var(--encre-2); }
+.vb-fil a { color: var(--violet-3); }
+.vb-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+a.vb-carte { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 14px 16px; text-decoration: none; color: var(--encre); display: flex; flex-direction: column; gap: 6px; }
+a.vb-carte:hover { border-color: var(--violet-2); }
+.vb-discret { color: var(--encre-2); font-size: 13px; }
+.vb-retard { color: var(--rouge); font-weight: 700; }
+.vb-alerte { background: var(--rouge-pale); color: var(--rouge); border-radius: 10px; padding: 10px 14px; }
+.vb-barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.vb-puces { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vb-puce { min-height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid var(--bord-2); background: var(--carte); color: var(--encre); font-weight: 600; font-size: 13px; cursor: pointer; }
+.vb-puce[aria-pressed="true"] { background: var(--entete); border-color: var(--entete); color: #fff; }
+.vb-numero { font-size: 12px; font-weight: 700; background: #2b2730; color: #fff; border-radius: 6px; padding: 2px 7px; }
+.vb-rubrique { display: flex; flex-direction: column; gap: 8px; }
+.vb-rubrique > header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vb-rubrique h2 { font-size: 14px; margin: 0; color: var(--violet); text-transform: uppercase; letter-spacing: .03em; }
+.vb-obs { display: flex; flex-direction: column; gap: 6px; background: var(--carte); border: 1px solid var(--bord); border-left: 6px solid var(--couleur, #999); border-radius: 10px; padding: 12px 16px; cursor: pointer; text-align: left; color: var(--encre); width: 100%; font: inherit; }
+.vb-obs:hover { border-color: var(--violet-2); border-left-color: var(--couleur, #999); }
+.vb-obs .vb-ligne { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
+.vb-obs .vb-texte { font-size: 15px; line-height: 1.45; white-space: pre-wrap; }
+.vb-etat { width: 44px; height: 44px; border-radius: 22px; border: none; color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; background: #b8b0bb; }
+.vb-etat.petit { width: 24px; height: 24px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; cursor: default; }
+.vb-commentaire { background: #fffbe6; color: #1c1b1f; border: 1px solid #f0e2a8; border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+.vb-ajout { display: flex; gap: 8px; }
+.vb-ajout .champ { flex: 1; }
+.champ-form textarea.vb-description { min-height: 120px; resize: vertical; font: inherit; line-height: 1.45; }
+
+/* Compte rendu imprimable */
+.vb-feuille { background: #fff; color: #1c1b1f; max-width: 820px; margin: 0 auto; padding: 28px 34px; font-size: 12px; border-radius: 4px; }
+.vb-feuille h1 { font-size: 20px; margin: 0; }
+.vb-feuille .vb-rub { background: #f1e6f0; color: #430742; font-weight: 700; padding: 6px 10px; margin-top: 14px; text-transform: uppercase; }
+.vb-feuille .vb-item { border-left: 4px solid var(--couleur, #999); padding: 6px 10px; margin-top: 8px; break-inside: avoid; }
+.vb-feuille table { width: 100%; border-collapse: collapse; }
+.vb-feuille th, .vb-feuille td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; vertical-align: top; }
+@media print {
+  .vb-ne-pas-imprimer { display: none !important; }
+  /* Uniquement sur la page d'aperçu du CR : les rapports de Batiscope gardent leur mise en page. */
+  body:has(.vb-feuille) .pied, body:has(.vb-feuille) .notifications { display: none !important; }
+  main.page:has(> .vb-feuille) { padding: 0; max-width: none; }
+  .vb-feuille { padding: 0; max-width: none; }
+}

@@ -14,6 +14,18 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.8 (module Visibat : comptes rendus de chantier)
+- Nouvelle entrée **Visibat** dans le menu (loupe Visibat) : visites et comptes rendus de réunions de chantier, avec les
+  réglages de Batiscope (thèmes, taille du texte…). Données dans le schéma `visibat` de la même base, mêmes comptes.
+- Opérations (mes projets, projets du groupe, toute la DETB), rattachées si besoin à un bâtiment du patrimoine ;
+  carnet d'adresses partagé avec le type d'intervenant ; intervenants et lots de chaque opération.
+- Réunions numérotées, présences P / E / A / N au toucher, cumul des absences non excusées et pénalité CCAP.
+- Observations avec 7 statuts en couleur, numérotation « n° de réunion.index » (0.x = points permanents), classement
+  remarques générales / intervenants / lots, échéances, checklist, commentaires internes, historique ;
+  **report automatique** des points non soldés d'une réunion à la suivante.
+- Aperçu du CR au modèle DETB (impression / PDF) et brouillon Outlook (.eml, destinataires en copie cachée).
+- Paramètres › Visibat : statuts et couleurs (administrateurs), groupes d'agents.
+
 ## Version 0.7 (notice au modèle DETB, exports Word)
 - Notice d'accessibilité : tableau des dispositions réglementaires (articles 2 à 19, lignes du modèle DETB),
   colonne « Dispositions prévues » remplie automatiquement depuis le diagnostic (conforme, non conforme avec travaux

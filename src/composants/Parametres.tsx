@@ -6,9 +6,10 @@ import { VERSION_REFERENTIEL } from '../moteur'
 import { motDePasseProvisoire, reglages, type Taille, type Theme } from '../reglages'
 import bibliotheque from '../data/symboles_plan.json'
 import { Champ, Dialogue, executer, signaler } from './Ui'
+import ParametresVisibat from '../visibat/composants/ParametresVisibat'
 
 export interface Moi { id: string; nom: string; email: string; role: string }
-type Onglet = 'compte' | 'apparence' | 'utilisateurs' | 'listes' | 'veille' | 'apropos'
+type Onglet = 'compte' | 'apparence' | 'utilisateurs' | 'listes' | 'veille' | 'visibat' | 'apropos'
 
 /** Fenêtre « Paramètres », ouverte par le logo (comme « À propos et réglages » sur la tablette). */
 export function Parametres({ ouvert, fermer, moi, renommer }: { ouvert: boolean; fermer: () => void; moi: Moi; renommer: (nom: string) => void }) {
@@ -16,7 +17,7 @@ export function Parametres({ ouvert, fermer, moi, renommer }: { ouvert: boolean;
   const admin = moi.role === 'admin'
   const onglets: { id: Onglet; libelle: string }[] = [
     { id: 'compte', libelle: 'Mon compte' }, { id: 'apparence', libelle: 'Apparence' },
-    ...(admin ? [{ id: 'utilisateurs' as Onglet, libelle: 'Utilisateurs' }, { id: 'listes' as Onglet, libelle: 'Listes' }] : []), { id: 'veille', libelle: 'Veille réglementaire' }, { id: 'apropos', libelle: 'À propos' },
+    ...(admin ? [{ id: 'utilisateurs' as Onglet, libelle: 'Utilisateurs' }, { id: 'listes' as Onglet, libelle: 'Listes' }] : []), { id: 'veille', libelle: 'Veille réglementaire' }, { id: 'visibat', libelle: 'Visibat' }, { id: 'apropos', libelle: 'À propos' },
   ]
   return (
     <Dialogue titre="Paramètres" ouvert={ouvert} fermer={fermer} large>
@@ -28,6 +29,7 @@ export function Parametres({ ouvert, fermer, moi, renommer }: { ouvert: boolean;
       {onglet === 'utilisateurs' && admin && <Utilisateurs moi={moi} />}
       {onglet === 'listes' && admin && <Listes />}
       {onglet === 'veille' && <HistoriqueVeille admin={admin} />}
+      {onglet === 'visibat' && <ParametresVisibat moiId={moi.id} admin={admin} />}
       {onglet === 'apropos' && <APropos />}
     </Dialogue>
   )

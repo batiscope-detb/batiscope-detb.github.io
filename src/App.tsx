@@ -14,6 +14,8 @@ import RegistreEdition from './pages/RegistreEdition'
 import { Notifications } from './composants/Ui'
 import { FormulaireMotDePasse, Parametres, type Moi } from './composants/Parametres'
 import { reglages } from './reglages'
+import Visibat from './visibat/Visibat'
+import { Logo } from './visibat/ui'
 
 interface Donnees { patrimoine: Patrimoine; indicateurs: IndicateursErp[]; chargeLe: Date }
 interface Ctx { donnees: Donnees | null; erreur: string | null; recharger: () => void; nomAgent: string; modifier: (f: (p: Patrimoine) => Patrimoine) => void; edition: boolean; role: string }
@@ -95,6 +97,7 @@ export default function App() {
         <nav className="nav" aria-label="Navigation principale">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'actif' : '')}>Tableau de bord</NavLink>
           <NavLink to="/referentiel" className={({ isActive }) => (isActive ? 'actif' : '')}>Référentiel accessibilité</NavLink>
+          <NavLink to="/visibat" className={({ isActive }) => (isActive ? 'actif' : '')} title="Visites et comptes rendus de chantier"><Logo taille={20} blanc /> Visibat</NavLink>
         </nav>
         <div className="compte">
           <label className={`interrupteur clair${edition ? ' actif' : ''}`} title="Autorise les modifications (fiches, plans, relevés)">
@@ -117,6 +120,7 @@ export default function App() {
           <Route path="/rapport/:id/:genre" element={<Rapport />} />
           <Route path="/notice/:id" element={<Notice />} />
           <Route path="/registre/:id" element={<RegistreEdition />} />
+          <Route path="/visibat/*" element={<Visibat />} />
           <Route path="*" element={<main className="page"><p>Page introuvable. <Link to="/">Retour au tableau de bord</Link></p></main>} />
         </Routes>
       )}
