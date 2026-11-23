@@ -3,7 +3,7 @@
  * et préparation du contenu : observations retenues et regroupement en rubriques.
  */
 import type { Contact, Dossier, Observation, Reunion, Statut } from '../donnees'
-import { observationsVisibles, rubriques, type Rubrique } from '../organisation'
+import { observationsVisibles, rubriques, trierRubrique, type Rubrique } from '../organisation'
 import { comparerNumeros } from '../regles'
 
 export interface Reglages {
@@ -46,15 +46,15 @@ export function observationsExport(dossier: Dossier, reunion: Reunion, statuts: 
 export function regrouper(dossier: Dossier, obs: Observation[], contacts: Contact[], statuts: Statut[], r: Reglages): Rubrique[] {
   if (r.classement === 'statut') return statuts.map((s) => ({ cle: `s-${s.code}`, titre: s.libelle, observations: obs.filter((o) => o.statut_code === s.code) })).filter((g) => g.observations.length)
   if (r.classement === 'plan') {
-    const res: Rubrique[] = dossier.plans.map((p) => ({ cle: `p-${p.id}`, titre: `Plan : ${p.libelle}`, observations: obs.filter((o) => dossier.positions.some((x) => x.observation_id === o.id && x.plan_id === p.id)) }))
+    const res: Rubrique[] = dossier.plans.map((p) => ({ cle: `p-${p.id}`, titre: `Plan : ${p.libelle}`, observations: trierRubrique(obs.filter((o) => dossier.positions.some((x) => x.observation_id === o.id && x.plan_id === p.id))) }))
     const sans = obs.filter((o) => !dossier.positions.some((x) => x.observation_id === o.id))
     if (sans.length) res.push({ cle: 'sans-plan', titre: 'Observations sans position sur plan', observations: sans })
     return res.filter((g) => g.observations.length)
   }
   if (r.classement === 'lot') {
     const lotsDe = (o: Observation) => dossier.obsLots.filter((x) => x.observation_id === o.id).map((x) => x.lot_id)
-    const res: Rubrique[] = [{ cle: 'generales', titre: 'Remarques générales', observations: obs.filter((o) => o.rubrique === 'generale') }]
-    for (const l of dossier.lots) res.push({ cle: `l-${l.id}`, titre: `${l.code} ${l.libelle}`, lotId: l.id, observations: obs.filter((o) => o.rubrique !== 'generale' && lotsDe(o).includes(l.id)) })
+    const res: Rubrique[] = [{ cle: 'generales', titre: 'Remarques générales', observations: trierRubrique(obs.filter((o) => o.rubrique === 'generale')) }]
+    for (const l of dossier.lots) res.push({ cle: `l-${l.id}`, titre: `${l.code} ${l.libelle}`, lotId: l.id, observations: trierRubrique(obs.filter((o) => o.rubrique !== 'generale' && lotsDe(o).includes(l.id))) })
     const sans = obs.filter((o) => o.rubrique !== 'generale' && lotsDe(o).length === 0)
     if (sans.length) res.push({ cle: 'autres', titre: 'Autres observations', observations: sans })
     return res.filter((g) => g.observations.length)

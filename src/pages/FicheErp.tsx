@@ -12,6 +12,7 @@ import Releves from './fiche/Releves'
 import Accessibilite from './fiche/Accessibilite'
 import Plans from './fiche/Plans'
 import { DialogueProjet } from './fiche/DialogueProjet'
+import ChantiersDuBatiment from '../visibat/composants/ChantiersDuBatiment'
 
 type Onglet = 'synthese' | 'batiment' | 'releves' | 'accessibilite' | 'plans' | 'archivage'
 const ONGLETS: { id: Onglet; libelle: string }[] = [
@@ -129,6 +130,7 @@ export default function FicheErp() {
               {ind.diagnostic && <div><dt>Classement ERP</dt><dd>{ind.diagnostic.type_erp ? `Type ${ind.diagnostic.type_erp}${ind.diagnostic.activites_secondaires?.length ? ` (+ ${ind.diagnostic.activites_secondaires.join(', ')})` : ''}` : 'Type non renseigné'}{ind.diagnostic.categorie ? ` — ${ind.diagnostic.categorie}e catégorie` : ''}</dd></div>}
               <div><dt>Dernière mise à jour</dt><dd>{date(ind.derniereMaj)}{pr.maj_par && agents.get(pr.maj_par) ? ` par ${agents.get(pr.maj_par)}` : ''}</dd></div>
             </dl>
+            <ChantiersDuBatiment projetId={pr.id} />
           </div>
         </section>
 

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { signaler } from '../../composants/Ui'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { statutDe, useVisibat } from '../contexte'
 import { ORDRE_CATEGORIES, cumulAbsences, libelleType } from '../regles'
@@ -24,6 +25,8 @@ export default function Impression() {
   const etat = useLocation().state as { reglages?: unknown } | null
   const [r, setR] = useState(() => etat?.reglages ? completer(etat.reglages) : REGLAGES_DEFAUT)
   const urls = useUrls(dossier)
+  const feuille = useRef<HTMLElement>(null)
+  const [word, setWord] = useState(false)
   const reunion = dossier?.reunions.find((x) => x.id === reunionId)
   const obs = useMemo(() => dossier && reunion ? observationsExport(dossier, reunion, statuts, r) : [], [dossier, reunion, statuts, r])
   const avecPhotos = r.photos !== 'aucune', avecPlans = r.plans
@@ -44,11 +47,20 @@ export default function Impression() {
         <label className="case"><input type="checkbox" checked={r.memoire} onChange={(e) => setR({ ...r, memoire: e.target.checked })} />Points « pour mémoire »</label>
         <label className="case"><input type="checkbox" checked={avecPhotos} onChange={(e) => setR({ ...r, photos: e.target.checked ? 'vignettes' : 'aucune' })} />Photos</label>
         <label className="case"><input type="checkbox" checked={avecPlans} onChange={(e) => setR({ ...r, plans: e.target.checked })} />Plans</label>
-        <button type="button" className="bouton primaire" onClick={() => window.print()}>Imprimer / enregistrer en PDF</button>
+        <button type="button" className="bouton" disabled={word} onClick={async () => {
+          if (!feuille.current) return
+          setWord(true)
+          try { const { exporterWord } = await import('../../exportWord'); await exporterWord(feuille.current, `CR ${reunion.numero} - ${op.nom}`, `Réunion de chantier n° ${reunion.numero}`) }
+          catch (e) { signaler(`Export Word impossible : ${e instanceof Error ? e.message : e}`, 'erreur') } finally { setWord(false) }
+        }}>{word ? 'Préparation…' : 'Word (.docx)'}</button>
+        <button type="button" className="bouton primaire" onClick={() => window.print()}>Imprimer</button>
       </div>
-      <article className="vb-feuille">
+      <article className="vb-feuille" ref={feuille}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, borderBottom: '2px solid #430742', paddingBottom: 8 }}>
-          <div><h1>Réunion de chantier n° {reunion.numero}</h1><div>{dateHeureFr(reunion.date_reunion)} · {reunion.lieu}</div></div>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <img src={`${import.meta.env.BASE_URL}logo-cherbourg.jpg`} alt="Ville de Cherbourg-en-Cotentin" style={{ height: 46 }} />
+            <div><h1>Réunion de chantier n° {reunion.numero}</h1><div>{dateHeureFr(reunion.date_reunion)} · {reunion.lieu}</div></div>
+          </div>
           <div style={{ textAlign: 'right' }}>
             <strong>Direction Études Travaux Bâtiments</strong><br />Ville de Cherbourg-en-Cotentin<br />Rédacteur : {moi.nom}
             {reunion.prochaine_date && <div style={{ color: '#b3261e', fontWeight: 700, marginTop: 4 }}>Prochaine réunion : {dateHeureFr(reunion.prochaine_date)}{reunion.prochaine_lieu ? ` – ${reunion.prochaine_lieu}` : ''}</div>}
@@ -61,12 +73,13 @@ export default function Impression() {
           const liste = dossier.intervenants.filter((i) => i.categorie === cat)
           if (!liste.length) return null
           return (
-            <table key={cat} style={{ marginTop: 8 }}>
-              <thead><tr style={{ background: '#f1e6f0' }}><th style={{ width: '32%' }}>{libelleType(cat).toUpperCase()}</th><th>Société</th><th>Téléphone</th><th>E-mail</th><th>État</th><th>C</th><th>Abs.</th></tr></thead>
+            <table key={cat} className="vb-fixe" style={{ marginTop: 8 }}>
+              <colgroup><col style={{ width: '31%' }} /><col style={{ width: '19%' }} /><col style={{ width: '14%' }} /><col style={{ width: '24%' }} /><col style={{ width: '5%' }} /><col style={{ width: '3%' }} /><col style={{ width: '4%' }} /></colgroup>
+              <thead><tr style={{ background: '#f1e6f0' }}><th>{libelleType(cat).toUpperCase()}</th><th>Société</th><th>Téléphone</th><th>E-mail</th><th>État</th><th>C</th><th>Abs.</th></tr></thead>
               <tbody>{liste.map((i) => {
                 const c = contacts.find((x) => x.id === i.contact_id)
                 const p = presence(i.id)
-                const lot = dossier.lots.find((l) => l.id === i.lot_id)
+                const lot = i.categorie === 'entreprise' ? dossier.lots.find((l) => l.id === i.lot_id) : undefined
                 const n = cumulAbsences(dossier.presences, i.id, dossier.reunions, reunion.numero)
                 return <tr key={i.id}>
                   <td>{lot && <>{lot.code} {lot.libelle}<br /></>}<b>{nomComplet(c)}</b>{c?.fonction ? ` – ${c.fonction}` : ''}</td>

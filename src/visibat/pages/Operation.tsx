@@ -1,16 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useVisibat } from '../contexte'
-import { enregistrer, modifier, supprimer, type Dossier, type Intervenant, type Lot } from '../donnees'
+import { BUCKET, enregistrer, lireBatiments, modifier, supprimer, type Dossier, type Intervenant, type Lot } from '../donnees'
+import { deposerFichier, preparerPhoto } from '../../ecriture'
 import { ORDRE_CATEGORIES, TYPES_INTERVENANT, libelleType } from '../regles'
 import { useDossier } from '../useDossier'
 import FicheContact, { nomComplet } from '../composants/FicheContact'
 import Entete, { Onglets } from '../composants/Entete'
-import { Champ, Dialogue, executer, signaler } from '../../composants/Ui'
+import { BoutonFichier, Champ, Dialogue, executer, signaler } from '../../composants/Ui'
 import { dateFr, dateHeureFr, depuisSaisie, versSaisie } from '../ui'
 import { GestionPlans } from '../composants/Plans'
 import { PlanningOperation } from '../composants/Planning'
-import { useUrls } from '../useUrls'
+import { urlPhotoChantier, useUrls } from '../useUrls'
 
 type Onglet = 'reunions' | 'intervenants' | 'lots' | 'plans' | 'planning' | 'fiche'
 
@@ -106,7 +107,7 @@ function Intervenants({ dossier, recharger }: { dossier: Dossier; recharger: () 
   async function ajouter() {
     if (!f.contact_id) return signaler('Choisissez un contact.', 'erreur')
     const ok = await executer(async () => {
-      const i = await enregistrer('intervenant', { operation_id: dossier.operation.id, contact_id: f.contact_id, categorie: f.categorie, lot_id: f.lot_id || null, ordre: dossier.intervenants.length })
+      const i = await enregistrer('intervenant', { operation_id: dossier.operation.id, contact_id: f.contact_id, categorie: f.categorie, lot_id: f.categorie === 'entreprise' ? f.lot_id || null : null, ordre: dossier.intervenants.length })
       for (const r of dossier.reunions.filter((x) => x.statut === 'brouillon')) await enregistrer('presence', { reunion_id: r.id, intervenant_id: i.id, etat: null, convoque: true })
       return true
     }, 'Intervenant ajouté')
@@ -123,7 +124,8 @@ function Intervenants({ dossier, recharger }: { dossier: Dossier; recharger: () 
     {parCategorie.map((g) => (
       <section key={g.cat} className="vb-rubrique">
         <header><h2>{libelleType(g.cat)}</h2></header>
-        <div className="carte tableau-conteneur"><table className="tableau">
+        <div className="carte tableau-conteneur"><table className="tableau vb-fixe">
+          <colgroup><col style={{ width: '28%' }} /><col style={{ width: '22%' }} /><col style={{ width: '14%' }} /><col style={{ width: '20%' }} /><col style={{ width: '9%' }} /><col style={{ width: '7%' }} /></colgroup>
           <thead><tr><th>Intervenant</th><th>Lot</th><th>Téléphone</th><th>E-mail</th><th>Reçoit le CR</th><th></th></tr></thead>
           <tbody>{g.liste.map((i) => <LigneIntervenant key={i.id} i={i} dossier={dossier} recharger={recharger} />)}</tbody>
         </table></div>
@@ -133,22 +135,22 @@ function Intervenants({ dossier, recharger }: { dossier: Dossier; recharger: () 
         <input className="champ" type="search" placeholder="Rechercher dans le carnet…" aria-label="Rechercher dans le carnet" value={filtre} onChange={(e) => setFiltre(e.target.value)} />
         <Champ libelle="Contact">
           <select className="champ" size={7} value={f.contact_id}
-            onChange={(e) => { const c = contacts.find((x) => x.id === e.target.value); setF({ ...f, contact_id: e.target.value, categorie: c?.type_intervenant ?? f.categorie }) }}>
+            onChange={(e) => { const c = contacts.find((x) => x.id === e.target.value); const cat = c?.type_intervenant ?? f.categorie; setF({ ...f, contact_id: e.target.value, categorie: cat, lot_id: cat === 'entreprise' ? f.lot_id : '' }) }}>
             {choix.map((c) => <option key={c.id} value={c.id}>{nomComplet(c)}{c.societe ? ` — ${c.societe}` : ''}</option>)}
           </select>
         </Champ>
         <div className="grille-2">
           <Champ libelle="Rôle sur l'opération">
-            <select className="champ" value={f.categorie} onChange={(e) => setF({ ...f, categorie: e.target.value })}>
+            <select className="champ" value={f.categorie} onChange={(e) => setF({ ...f, categorie: e.target.value, lot_id: e.target.value === 'entreprise' ? f.lot_id : '' })}>
               {TYPES_INTERVENANT.map((t) => <option key={t.code} value={t.code}>{t.libelle}</option>)}
             </select>
           </Champ>
-          <Champ libelle="Lot">
+          {f.categorie === 'entreprise' ? <Champ libelle="Lot">
             <select className="champ" value={f.lot_id} onChange={(e) => setF({ ...f, lot_id: e.target.value })}>
               <option value="">—</option>
               {dossier.lots.map((l) => <option key={l.id} value={l.id}>{l.code} {l.libelle}</option>)}
             </select>
-          </Champ>
+          </Champ> : <p className="vb-discret" style={{ alignSelf: 'end' }}>Le lot ne concerne que les entreprises.</p>}
         </div>
       </div>
     </Dialogue>
@@ -163,9 +165,10 @@ function LigneIntervenant({ i, dossier, recharger }: { i: Intervenant; dossier: 
   return (
     <tr>
       <td><strong>{nomComplet(c)}</strong><div className="vb-discret">{[c?.fonction, c?.societe].filter(Boolean).join(' · ')}</div></td>
-      <td><select className="champ petit" value={i.lot_id ?? ''} aria-label="Lot" onChange={(e) => maj({ lot_id: e.target.value || null })}>
-        <option value="">—</option>{dossier.lots.map((l) => <option key={l.id} value={l.id}>{l.code} {l.libelle}</option>)}
-      </select></td>
+      <td>{i.categorie === 'entreprise'
+        ? <select className="champ petit" style={{ width: '100%' }} value={i.lot_id ?? ''} aria-label="Lot" onChange={(e) => maj({ lot_id: e.target.value || null })}>
+          <option value="">—</option>{dossier.lots.map((l) => <option key={l.id} value={l.id}>{l.code} {l.libelle}</option>)}
+        </select> : <span className="vb-discret">—</span>}</td>
       <td style={{ whiteSpace: 'nowrap' }}>{c?.mobile ?? c?.telephone}</td>
       <td>{c?.email}</td>
       <td><label className="case"><input type="checkbox" checked={i.diffusion} onChange={(e) => maj({ diffusion: e.target.checked })} />Oui</label></td>
@@ -213,13 +216,37 @@ function Lots({ dossier, recharger }: { dossier: Dossier; recharger: () => Promi
 function Fiche({ dossier, recharger }: { dossier: Dossier; recharger: () => Promise<void> }) {
   const { moi, groupes, membres } = useVisibat()
   const op = dossier.operation
+  const [batiments, setBatiments] = useState<Awaited<ReturnType<typeof lireBatiments>>>([])
+  const [photo, setPhoto] = useState<string | null>(null)
+  useEffect(() => { lireBatiments().then(setBatiments).catch(() => setBatiments([])) }, [])
+  useEffect(() => { urlPhotoChantier(op, batiments).then(setPhoto).catch(() => setPhoto(null)) }, [op.photo_path, op.projet_id, batiments]) // eslint-disable-line react-hooks/exhaustive-deps
   const mesGroupes = groupes.filter((g) => g.id === op.groupe_id || membres.some((m) => m.groupe_id === g.id && m.agent_id === moi.id))
   const maj = async (champs: Record<string, unknown>) => { if (await executer(() => modifier('operation', op.id, champs).then(() => true), 'Enregistré')) await recharger() }
+  async function changerPhoto(f: File) {
+    const chemin = `${op.id}/couverture-${crypto.randomUUID()}.jpg`
+    if (await executer(async () => { await deposerFichier(BUCKET, chemin, await preparerPhoto(f), 'image/jpeg'); return true })) await maj({ photo_path: chemin })
+  }
   const texte = (k: 'nom' | 'objet' | 'adresse', l: string) => (
     <Champ libelle={l}><input className="champ" defaultValue={op[k] ?? ''} onBlur={(e) => e.target.value !== (op[k] ?? '') && maj({ [k]: e.target.value || (k === 'nom' ? op.nom : null) })} /></Champ>)
   return (
     <section className="carte pile" style={{ maxWidth: 820 }}>
-      {texte('nom', 'Nom')}{texte('objet', 'Objet des travaux')}{texte('adresse', 'Adresse')}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div className="pile" style={{ gap: 6, width: 220 }}>
+          {photo ? <img src={photo} alt="Photo du chantier" style={{ width: 220, height: 150, objectFit: 'cover', borderRadius: 10 }} />
+            : <div className="vignette-vide" style={{ width: 220, height: 150, borderRadius: 10 }}>Pas de photo</div>}
+          <BoutonFichier className="bouton petit" libelle={op.photo_path ? 'Changer la photo' : 'Photo de couverture du CR'} accept="image/*" choisir={([f]) => changerPhoto(f)} />
+          {op.photo_path && <button type="button" className="bouton petit" onClick={() => maj({ photo_path: null })}>{op.projet_id ? 'Reprendre la photo du bâtiment' : 'Retirer la photo'}</button>}
+        </div>
+        <div className="pile" style={{ flex: 1, minWidth: 260 }}>
+          <Champ libelle="Bâtiment du patrimoine Batiscope" aide="Facultatif. Sans rattachement, l'opération reste hors patrimoine.">
+            <select className="champ" value={op.projet_id ?? ''} onChange={(e) => maj({ projet_id: e.target.value || null })}>
+              <option value="">— Hors patrimoine Batiscope —</option>
+              {batiments.map((b) => <option key={b.id} value={b.id}>{b.nom}</option>)}
+            </select>
+          </Champ>
+          {texte('nom', 'Nom')}{texte('objet', 'Objet des travaux')}{texte('adresse', 'Adresse')}
+        </div>
+      </div>
       <div className="grille-2">
         <Champ libelle="Début des travaux"><input className="champ" type="date" defaultValue={op.debut_travaux ?? ''} onBlur={(e) => maj({ debut_travaux: e.target.value || null })} /></Champ>
         <Champ libelle="Objectif de réception"><input className="champ" type="date" defaultValue={op.objectif_reception ?? ''} onBlur={(e) => maj({ objectif_reception: e.target.value || null })} /></Champ>

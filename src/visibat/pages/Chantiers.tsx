@@ -75,7 +75,7 @@ export default function Chantiers() {
 
 function NouvelleOperation({ ouvert, fermer, apres }: { ouvert: boolean; fermer: () => void; apres: (id: string) => void }) {
   const { moi, groupes, membres } = useVisibat()
-  const [batiments, setBatiments] = useState<{ id: string; nom: string; adresse: string | null }[]>([])
+  const [batiments, setBatiments] = useState<Awaited<ReturnType<typeof lireBatiments>>>([])
   const vide = { nom: '', objet: '', adresse: '', projet_id: '', groupe_id: '', debut_travaux: '', objectif_reception: '' }
   const [f, setF] = useState(vide)
   useEffect(() => { if (ouvert) { setF(vide); lireBatiments().then(setBatiments).catch(() => setBatiments([])) } }, [ouvert]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -93,12 +93,12 @@ function NouvelleOperation({ ouvert, fermer, apres }: { ouvert: boolean; fermer:
   return (
     <Dialogue titre="Nouvelle opération" ouvert={ouvert} fermer={fermer} valider={() => executer(creer)} libelleValider="Créer">
       <div className="pile">
-        <Champ libelle="Bâtiment (patrimoine Batiscope)">
+        <Champ libelle="Bâtiment du patrimoine Batiscope" aide="Facultatif : un chantier hors patrimoine (bâtiment neuf, site extérieur…) se saisit librement ci-dessous. Le rattachement peut se faire plus tard dans la fiche opération.">
           <select className="champ" value={f.projet_id} onChange={(e) => {
             const b = batiments.find((x) => x.id === e.target.value)
             setF({ ...f, projet_id: e.target.value, nom: f.nom || b?.nom || '', adresse: f.adresse || b?.adresse || '' })
           }}>
-            <option value="">— Aucun —</option>
+            <option value="">— Hors patrimoine Batiscope (saisie libre) —</option>
             {batiments.map((b) => <option key={b.id} value={b.id}>{b.nom}</option>)}
           </select>
         </Champ>

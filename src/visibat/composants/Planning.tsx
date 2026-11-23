@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as PE } from 'react'
 import { BoutonFichier, executer, signaler } from '../../composants/Ui'
 import { modifier, type Dossier } from '../donnees'
 import {
-  COULEURS, analyserPredecesseurs, calculer, depuisISO, descendre, desindenter, formaterPredecesseurs, herite, indenter, indexer, monter, niveau,
+  COULEURS, analyserPredecesseurs, calculer, calendrier, depuisISO, descendre, desindenter, formaterPredecesseurs, herite, indenter, indexer, monter, niveau,
   normaliser, nouveauPlanning, nouvelId, supprimerBloc, versISO, type Calcul, type Planning, type Tache,
 } from '../planning/moteur'
 
@@ -137,7 +137,7 @@ export function PlanningOperation({ dossier, recharger }: { dossier: Dossier; re
             </tbody>
           </table>
         </div>
-        <Gantt planning={planning} calcul={calcul} lignes={lignes.map((l) => l.t ?? null)} selection={sel} choisir={setSel}
+        <Gantt planning={planning} calcul={calcul} lignes={lignes.map((l) => l.t ?? null)} selection={sel} choisir={setSel} modifier={modifierTache}
           jalons={programmees.map((o) => ({ date: o.date_intervention!, titre: `${o.numero} — ${o.texte.slice(0, 60)}` }))} />
       </div>
     </section>
@@ -168,10 +168,14 @@ function LigneTache({ t, niv, num, calcul, planning, choisie, choisir, modifier,
 }
 
 /** Diagramme de Gantt (lecture seule) : une ligne par tâche, chemin critique en rouge, aujourd'hui en trait rouge. */
-export function Gantt({ planning, calcul, lignes, selection, choisir, jalons = [], debut, fin, hauteurLigne = 41 }: {
+export function Gantt({ planning, calcul, lignes, selection, choisir, jalons = [], debut, fin, hauteurLigne = 41, modifier }: {
   planning: Planning; calcul: Calcul; lignes: (Tache | null)[]; selection?: string | null; choisir?: (id: string) => void
   jalons?: { date: string; titre: string }[]; debut?: Date; fin?: Date; hauteurLigne?: number
+  /** Gantt modifiable à la souris : glisser une barre (début imposé), tirer son bord droit (durée). */
+  modifier?: (id: string, champs: Partial<Tache>) => void
 }) {
+  const corps = useRef<HTMLDivElement>(null)
+  const [glisse, setGlisse] = useState<{ id: string; mode: 'deplacer' | 'duree'; x0: number; dj: number } | null>(null)
   const parId = indexer(planning.taches)
   const d0 = debut ?? calcul.debutProjet ?? depuisISO(planning.projet.debut)
   const d1 = fin ?? new Date(Math.max((calcul.finProjet ?? d0).getTime() + 7 * JOUR, d0.getTime() + 30 * JOUR))
@@ -184,22 +188,50 @@ export function Gantt({ planning, calcul, lignes, selection, choisir, jalons = [
     mois.push({ libelle: m.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit', timeZone: 'UTC' }), g, l: dr - g })
   }
   const auj = pct(new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())))
+  const joursParPx = () => jours / Math.max(1, corps.current?.getBoundingClientRect().width ?? 1)
+  function bas(e: PE<HTMLSpanElement>, t: Tache, mode: 'deplacer' | 'duree') {
+    if (!modifier || calcul.taches.get(t.id)?.recap) return
+    e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId)
+    setGlisse({ id: t.id, mode, x0: e.clientX, dj: 0 })
+  }
+  const bouge = (e: PE<HTMLSpanElement>) => glisse && setGlisse({ ...glisse, dj: Math.round((e.clientX - glisse.x0) * joursParPx()) })
+  function haut(t: Tache) {
+    const g = glisse, r = calcul.taches.get(t.id)
+    setGlisse(null)
+    if (!g || !r || !modifier || g.dj === 0) return
+    const cal = calendrier(planning.projet.debut, { feries: planning.projet.feries, fermetures: planning.projet.fermetures })
+    if (g.mode === 'deplacer') {
+      const cible = new Date(r.debut.getTime() + g.dj * JOUR)
+      // Ramenée à sa date au plus tôt (ou avant) : le début imposé est retiré, comme dans Planibat.
+      const sansImpose = calculer({ ...planning, taches: planning.taches.map((x) => (x.id === t.id ? { ...x, debutImpose: null } : x)) }).taches.get(t.id)
+      modifier(t.id, { debutImpose: sansImpose && cible <= sansImpose.debut ? null : versISO(cible) })
+    } else {
+      const finCible = new Date(r.fin.getTime() + (g.dj + 1) * JOUR)
+      modifier(t.id, { duree: Math.max(1, cal.index(versISO(finCible)) - r.es) })
+    }
+  }
   const couleurLot = (t: Tache) => planning.lots.find((l) => l.id === herite(t, parId, 'lotId'))?.couleur ?? '#90a4ae'
   return (
     <div className="vb-gantt" style={{ ['--h' as string]: `${hauteurLigne}px` }}>
       <div className="vb-gantt-mois">{mois.map((m) => <span key={m.g} style={{ left: `${m.g}%`, width: `${m.l}%` }}>{m.libelle}</span>)}</div>
-      <div className="vb-gantt-corps">
+      <div className="vb-gantt-corps" ref={corps}>
         {auj >= 0 && auj <= 100 && <i className="vb-gantt-auj" style={{ left: `${auj}%` }} aria-hidden="true" />}
         {lignes.map((t, i) => {
           const r = t && calcul.taches.get(t.id)
           if (!t || !r) return <div key={`v${i}`} className="vb-gantt-ligne vb-groupe" />
-          const g = pct(r.debut), l = Math.max(0.4, pct(new Date(r.fin.getTime() + JOUR)) - g)
+          const dec = glisse?.id === t.id ? (glisse.dj / jours) * 100 : 0
+          const g = pct(r.debut) + (glisse?.id === t.id && glisse.mode === 'deplacer' ? dec : 0)
+          const l = Math.max(0.4, pct(new Date(r.fin.getTime() + JOUR)) - pct(r.debut) + (glisse?.id === t.id && glisse.mode === 'duree' ? dec : 0))
+          const mobile = !!modifier && !r.recap
           return (
             <div key={t.id} className={`vb-gantt-ligne${selection === t.id ? ' vb-choisie' : ''}`} onClick={() => choisir?.(t.id)}>
               {t.duree === 0 && !r.recap
                 ? <span className="vb-jalon" style={{ left: `${g}%` }} title={`${t.nom} — ${dateCourte(r.debut)}`} />
-                : <span className={`vb-barre-g${r.recap ? ' recap' : ''}${r.critique ? ' critique' : ''}`} title={`${t.nom} — ${dateCourte(r.debut)} → ${dateCourte(r.fin)}${r.marge > 0 ? ` · marge ${r.marge} j` : ''}`}
-                  style={{ left: `${g}%`, width: `${l}%`, background: r.recap ? undefined : couleurLot(t) }} />}
+                : <span className={`vb-barre-g${r.recap ? ' recap' : ''}${r.critique ? ' critique' : ''}${mobile ? ' mobile' : ''}`} title={`${t.nom} — ${dateCourte(r.debut)} → ${dateCourte(r.fin)}${r.marge > 0 ? ` · marge ${r.marge} j` : ''}${mobile ? ' · glisser pour déplacer, tirer le bord droit pour la durée' : ''}`}
+                  style={{ left: `${g}%`, width: `${l}%`, background: r.recap ? undefined : couleurLot(t) }}
+                  onPointerDown={(e) => bas(e, t, 'deplacer')} onPointerMove={bouge} onPointerUp={() => haut(t)}>
+                  {mobile && <span className="vb-poignee" onPointerDown={(e) => bas(e, t, 'duree')} onPointerMove={bouge} onPointerUp={(e) => { e.stopPropagation(); haut(t) }} />}
+                </span>}
             </div>)
         })}
         {jalons.length > 0 && <div className="vb-gantt-ligne">{jalons.map((j, i) => <span key={i} className="vb-jalon prog" style={{ left: `${pct(depuisISO(j.date))}%` }} title={j.titre} />)}</div>}

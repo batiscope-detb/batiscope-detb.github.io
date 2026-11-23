@@ -4,6 +4,7 @@ import { Champ, Dialogue, executer, signaler } from '../../composants/Ui'
 import { useVisibat } from '../contexte'
 import { enregistrer, lireModeles, modifier, supprimer, type Dossier, type ModeleExport, type Reunion } from '../donnees'
 import { emailOutlook, nomFichier, objetCR, corpsCR, construireEml, telecharger } from '../diffusion'
+import { urlPhotoChantier } from '../useUrls'
 import { LIBELLES, completer, observationsExport, parEntreprise, regrouper, type Reglages } from '../export/reglages'
 
 /** Export et diffusion du CR : modèles (dernier utilisé, personnels, de groupe, pré-configurés), roue crantée, PDF, brouillon Outlook. */
@@ -37,7 +38,8 @@ export default function Export({ dossier, reunion, urls, recharger }: { dossier:
   async function pdf(r: Reglages, destinataire?: { nom: string; observations: ReturnType<typeof observationsExport> }) {
     const { genererPdf } = await import('../export/pdf')
     const obs = destinataire?.observations ?? observationsExport(dossier, reunion, statuts, r)
-    return genererPdf({ dossier, reunion, reglages: r, statuts, contacts, urls, redacteur: moi.nom, observations: obs, rubriques: regrouper(dossier, obs, contacts, statuts, r), destinataire: destinataire?.nom })
+    const photoCouverture = r.garde ? await urlPhotoChantier(dossier.operation).catch(() => null) : null
+    return genererPdf({ dossier, reunion, reglages: r, statuts, contacts, urls, redacteur: moi.nom, observations: obs, rubriques: regrouper(dossier, obs, contacts, statuts, r), destinataire: destinataire?.nom, photoCouverture })
   }
   const nomPdf = (suffixe = '') => `CR ${reunion.numero} - ${nomFichier(dossier.operation.nom)}${suffixe}.pdf`
   const destinataires = dossier.intervenants.filter((i) => i.diffusion).map((i) => contacts.find((c) => c.id === i.contact_id)?.email).filter((x): x is string => !!x)
@@ -96,7 +98,7 @@ export default function Export({ dossier, reunion, urls, recharger }: { dossier:
         </div>))}
       {reglages && <p className="vb-discret" style={{ margin: 0 }}>Réglages personnalisés pour cet export : {resume(reglages)}.</p>}
       <div className="vb-barre">
-        <button type="button" className="bouton" onClick={() => navigate(`/visibat/operation/${dossier.operation.id}/reunion/${reunion.id}/impression`, { state: { reglages: actifs } })}>Aperçu</button>
+        <button type="button" className="bouton" onClick={() => navigate(`/visibat/operation/${dossier.operation.id}/reunion/${reunion.id}/impression`, { state: { reglages: actifs } })}>Aperçu, impression et Word</button>
         <button type="button" className="bouton" disabled={!!enCours} onClick={() => lancer('pdf')}>{enCours === 'pdf' ? 'Préparation…' : 'Télécharger le PDF'}</button>
         <button type="button" className="bouton primaire" disabled={!!enCours} onClick={() => lancer('outlook')}>{enCours === 'outlook' ? 'Préparation…' : 'Préparer l’e-mail Outlook (PDF joint)'}</button>
         {actifs.par_entreprise && <button type="button" className="bouton" disabled={!!enCours} onClick={() => lancer('entreprises')}>{enCours === 'entreprises' ? 'Préparation…' : 'Extraits par entreprise (.zip)'}</button>}

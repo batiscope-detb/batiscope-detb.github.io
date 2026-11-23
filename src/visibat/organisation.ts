@@ -4,7 +4,7 @@
  * Une observation associée à plusieurs lots apparaît sous chacun.
  */
 import type { Contact, Dossier, Observation, Reunion, Statut } from './donnees'
-import { observationsDeLaReunion } from './regles'
+import { comparerNumeros, observationsDeLaReunion } from './regles'
 import { nomComplet } from './composants/FicheContact'
 
 export interface Rubrique { cle: string; titre: string; sousTitre?: string; lotId?: string; observations: Observation[] }
@@ -15,7 +15,16 @@ export function observationsVisibles(dossier: Dossier, reunion: Reunion, statuts
   return observationsDeLaReunion(dossier.observations, reunion, dossier.reunions, statuts, soldeeIci)
 }
 
+/** Dans une rubrique, les points « pour mémoire » restent en tête, puis l'ordre des numéros. */
+export function trierRubrique(obs: Observation[]): Observation[] {
+  return [...obs].sort((a, b) => Number(b.statut_code === 'memoire') - Number(a.statut_code === 'memoire') || comparerNumeros(a.numero, b.numero))
+}
+
 export function rubriques(dossier: Dossier, observations: Observation[], contacts: Contact[]): Rubrique[] {
+  return rubriquesBrutes(dossier, observations, contacts).map((g) => ({ ...g, observations: trierRubrique(g.observations) }))
+}
+
+function rubriquesBrutes(dossier: Dossier, observations: Observation[], contacts: Contact[]): Rubrique[] {
   const res: Rubrique[] = []
   const lotsDe = (o: Observation) => dossier.obsLots.filter((x) => x.observation_id === o.id).map((x) => x.lot_id)
   const intervDe = (o: Observation) => dossier.obsIntervenants.filter((x) => x.observation_id === o.id).map((x) => x.intervenant_id)
@@ -32,7 +41,7 @@ export function rubriques(dossier: Dossier, observations: Observation[], contact
 
   for (const l of dossier.lots) {
     const obs = observations.filter((o) => o.rubrique === 'lot' && lotsDe(o).includes(l.id))
-    const entreprises = dossier.intervenants.filter((i) => i.lot_id === l.id).map((i) => contactDe(i.id)).filter(Boolean)
+    const entreprises = dossier.intervenants.filter((i) => i.categorie === 'entreprise' && i.lot_id === l.id).map((i) => contactDe(i.id)).filter(Boolean)
       .map((c) => `${c!.societe ?? ''} - ${nomComplet(c)}`).join(', ')
     res.push({ cle: `l-${l.id}`, titre: `${l.code} ${l.libelle}`, sousTitre: entreprises ? `Intervenants associés : ${entreprises}` : undefined, lotId: l.id, observations: obs })
   }

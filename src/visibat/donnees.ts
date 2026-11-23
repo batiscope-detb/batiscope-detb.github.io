@@ -83,9 +83,9 @@ export const lireOperations = () => tout<Operation>(() => vb().from('operation')
 /** Réunions de toutes les opérations (pour l'accueil : prochaine réunion, numéro). */
 export const lireToutesReunions = () => tout<Reunion>(() => vb().from('reunion').select('id,operation_id,numero,date_reunion,prochaine_date,statut,supprime_le').is('supprime_le', null))
 export const lireBatiments = async () => {
-  const { data, error } = await supabase.schema('releves').from('projet').select('id,nom,adresse').is('supprime_le', null).order('nom')
+  const { data, error } = await supabase.schema('releves').from('projet').select('id,nom,adresse,photo_path').is('supprime_le', null).order('nom')
   if (error) throw new Error(error.message)
-  return (data ?? []) as { id: string; nom: string; adresse: string | null }[]
+  return (data ?? []) as { id: string; nom: string; adresse: string | null; photo_path: string | null }[]
 }
 
 export async function chargerDossier(operationId: string): Promise<Dossier> {

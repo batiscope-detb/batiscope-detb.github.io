@@ -59,3 +59,11 @@ describe('export du CR', () => {
     expect(eml).toContain('JVBERg==') // « %PDF » en base64
   })
 })
+
+describe('ordre dans une rubrique', () => {
+  it('garde les points « pour mémoire » en tête du lot', async () => {
+    const { trierRubrique } = await import('../visibat/organisation')
+    const o = [obs('b', '94.1', 'r94', 'nouvelle'), obs('m', '0.18', null, 'memoire'), obs('a', '93.1', 'r93', 'nouvelle'), obs('n', '75.1', 'r93', 'memoire')]
+    expect(trierRubrique(o).map((x) => x.numero)).toEqual(['0.18', '75.1', '93.1', '94.1'])
+  })
+})

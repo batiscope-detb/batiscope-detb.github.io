@@ -14,6 +14,18 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.12 (Visibat : retours d'usage)
+- Opération **hors patrimoine Batiscope** clairement proposée à la création ; rattachement (ou détachement) d'un bâtiment
+  depuis la fiche opération ; **photo de couverture** du chantier (à défaut, celle du bâtiment).
+- Lot réservé aux **entreprises** (non proposé ni affiché pour MOE, bureau de contrôle, CSPS…).
+- Présences et aperçu du CR : **colonnes alignées** d'une catégorie d'intervenants à l'autre.
+- Les points **« Pour mémoire » restent en tête** de chaque lot (puis l'ordre des numéros).
+- PDF : **logo de la Ville**, page de garde avec photo du chantier, **pages numérotées « n / total »** (garde comprise).
+- Fiche d'un bâtiment Batiscope : liens vers ses **chantiers Visibat**.
+- Planning : barres du Gantt **déplaçables à la souris** (début imposé, retiré si la tâche revient à sa date au plus tôt)
+  et **durée modifiable** en tirant le bord droit.
+- Aperçu du CR : **export Word (.docx)** pour retouche avant envoi.
+
 ## Version 0.11 (Visibat : modèles d'export et PDF joint au brouillon Outlook)
 - Onglet **Export & diffusion** d'une réunion : dernier modèle utilisé, mes modèles, modèles du groupe et modèles
   pré-configurés (CR complet, visite courante, synthèse hiérarchie / élus, extraits par entreprise, OPR par lot ou par plan,

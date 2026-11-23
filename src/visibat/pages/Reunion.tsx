@@ -70,14 +70,15 @@ function Presences({ dossier, reunion, recharger }: { dossier: Dossier; reunion:
     {groupes.map((g) => (
       <section key={g.cat} className="vb-rubrique">
         <header><h2>{libelleType(g.cat)}</h2></header>
-        <div className="carte tableau-conteneur"><table className="tableau">
+        <div className="carte tableau-conteneur"><table className="tableau vb-fixe">
+          <colgroup><col style={{ width: '34%' }} /><col style={{ width: '24%' }} /><col style={{ width: '10%' }} /><col style={{ width: '20%' }} /><col style={{ width: '12%' }} /></colgroup>
           <thead><tr><th>Intervenant</th><th>Société</th><th>État</th><th>Convoqué à la prochaine</th><th style={{ textAlign: 'right' }}>Absences</th></tr></thead>
           <tbody>{g.liste.map((i) => {
             const c = contacts.find((x) => x.id === i.contact_id)
             const p = presence(i.id)
             const e = ETATS.find((x) => x.code === p?.etat)
             const n = cumulAbsences(dossier.presences, i.id, dossier.reunions, reunion.numero)
-            const lot = dossier.lots.find((l) => l.id === i.lot_id)
+            const lot = i.categorie === 'entreprise' ? dossier.lots.find((l) => l.id === i.lot_id) : undefined
             return (
               <tr key={i.id}>
                 <td>{lot && <div className="vb-discret">{lot.code} {lot.libelle}</div>}<strong>{nomComplet(c)}</strong>{c?.fonction && <div className="vb-discret">{c.fonction}</div>}</td>

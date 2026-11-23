@@ -85,3 +85,10 @@ a.vb-carte:hover { border-color: var(--violet-2); }
 .vb-modele-choix[aria-pressed="true"] { border-color: var(--violet-2); background: var(--pale); }
 .vb-roue { width: 52px; flex-shrink: 0; border-radius: 10px; border: 2px solid var(--bord); background: var(--carte); color: var(--encre-2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .vb-roue:hover { border-color: var(--violet-2); color: var(--violet); }
+/* Tableaux à colonnes identiques d'une catégorie d'intervenants à l'autre */
+table.vb-fixe { table-layout: fixed; width: 100%; }
+table.vb-fixe td, table.vb-fixe th { overflow: hidden; text-overflow: ellipsis; }
+.vb-feuille table.vb-fixe td { overflow-wrap: anywhere; }
+.vb-barre-g.mobile { cursor: grab; touch-action: none; }
+.vb-barre-g.mobile:active { cursor: grabbing; }
+.vb-poignee { position: absolute; right: -3px; top: -2px; bottom: -2px; width: 9px; cursor: ew-resize; }

@@ -17,6 +17,8 @@ export interface EntreePdf {
   urls: Map<string, string>; redacteur: string; observations: Observation[]; rubriques: Rubrique[]
   /** Extrait par entreprise : nom affiché sous le titre. */
   destinataire?: string
+  /** Photo de couverture (opération, sinon bâtiment Batiscope). */
+  photoCouverture?: string | null
 }
 
 const L = 595.28, H = 841.89, M = 40, LARGEUR = L - 2 * M
@@ -40,6 +42,9 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
   const doc = await PDFDocument.create()
   doc.setTitle(`Réunion de chantier n° ${reunion.numero} — ${op.nom}`); doc.setAuthor(e.redacteur); doc.setCreator('Visibat — DETB')
   const police = await doc.embedFont(StandardFonts.Helvetica), gras = await doc.embedFont(StandardFonts.HelveticaBold), italique = await doc.embedFont(StandardFonts.HelveticaOblique)
+  const logoOctets = await octets(`${import.meta.env.BASE_URL}logo-cherbourg.jpg`)
+  const logo = logoOctets ? await doc.embedJpg(logoOctets).catch(() => null) : null
+  const couverture = r.garde && e.photoCouverture ? await octets(e.photoCouverture).then((b) => (b ? doc.embedJpg(b).catch(() => null) : null)) : null
   const entete = `RÉUNION DE CHANTIER N° ${reunion.numero} — ${date(reunion.date_reunion)}`
   const prochaine = reunion.prochaine_date ? `Prochaine réunion : ${dateHeure(reunion.prochaine_date)}${reunion.prochaine_lieu ? ` – ${reunion.prochaine_lieu}` : ''}` : ''
 
@@ -47,7 +52,9 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
   const pagesCorps: PDFPage[] = []
   function nouvellePage() {
     page = doc.addPage([L, H]); pagesCorps.push(page)
-    texte(propre(entete), M, H - 28, 8, gras, GRIS)
+    let xEntete = M
+    if (logo) { const hl = 16, ll = (logo.width / logo.height) * hl; page.drawImage(logo, { x: M, y: H - 31, width: ll, height: hl }); xEntete = M + ll + 10 }
+    texte(propre(entete), xEntete, H - 27, 8, gras, GRIS)
     if (prochaine) { const t = propre(prochaine); texte(t, L - M - police.widthOfTextAtSize(t, 8), H - 28, 8, police, ROUGE) }
     page.drawLine({ start: { x: M, y: H - 34 }, end: { x: L - M, y: H - 34 }, thickness: 0.5, color: FILET })
     y = H - 50
@@ -82,18 +89,30 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
   // --- Page de garde -------------------------------------------------------------------------------
   if (r.garde) {
     page = doc.addPage([L, H])
-    texte('Direction Études et Travaux Bâtiments', M, H - 60, 10, gras, PRUNE)
-    texte('Ville de Cherbourg-en-Cotentin', M, H - 74, 10, police, GRIS)
-    const titre = `Réunion de chantier n° ${reunion.numero}`
-    texte(titre, (L - gras.widthOfTextAtSize(propre(titre), 26)) / 2, H - 260, 26, gras, PRUNE)
-    const d = dateHeure(reunion.date_reunion)
-    texte(d, (L - police.widthOfTextAtSize(propre(d), 13)) / 2, H - 285, 13, police, ENCRE)
-    y = H - 340
+    if (logo) { const ll = 170, hl = (logo.height / logo.width) * ll; page.drawImage(logo, { x: M, y: H - 40 - hl, width: ll, height: hl }) }
+    const droite = (t: string, yy: number, taille: number, f: PDFFont, c: RGB) => texte(t, L - M - f.widthOfTextAtSize(propre(t), taille), yy, taille, f, c)
+    droite('Direction Études et Travaux Bâtiments', H - 58, 9.5, gras, PRUNE)
+    droite('Pôle Patrimoine et Cadre de vie', H - 71, 9, police, GRIS)
+    const centre = (t: string, yy: number, taille: number, f: PDFFont, c: RGB = ENCRE) => texte(t, (L - f.widthOfTextAtSize(propre(t), taille)) / 2, yy, taille, f, c)
+    centre(`Réunion de chantier n° ${reunion.numero}`, H - 170, 26, gras, PRUNE)
+    centre(dateHeure(reunion.date_reunion), H - 194, 13, police)
+    y = H - 232
     for (const [t, f, taille] of [[op.nom, gras, 15], [op.adresse ?? '', police, 11], [op.objet ?? '', italique, 11], [e.destinataire ? `Extrait pour : ${e.destinataire}` : '', gras, 11]] as [string, PDFFont, number][]) {
       if (!t) continue
-      for (const l of lignes(t, f, taille, LARGEUR - 80)) { texte(l, (L - f.widthOfTextAtSize(l, taille)) / 2, y, taille, f); y -= taille * 1.5 }
+      for (const l of lignes(t, f, taille, LARGEUR - 80)) { centre(l, y, taille, f); y -= taille * 1.5 }
     }
-    if (prochaine) { const t = propre(prochaine); texte(t, (L - gras.widthOfTextAtSize(t, 12)) / 2, 170, 12, gras, ROUGE) }
+    if (couverture) {
+      const lmax = LARGEUR - 60, hmax = y - 190
+      const k = Math.min(lmax / couverture.width, hmax / couverture.height)
+      const lc = couverture.width * k, hc = couverture.height * k
+      page.drawImage(couverture, { x: (L - lc) / 2, y: y - 16 - hc, width: lc, height: hc })
+      y -= hc + 16
+    }
+    if (prochaine) {
+      centre('Prochaine réunion', 150, 12, gras, ENCRE)
+      const t = `${dateHeure(reunion.prochaine_date)}${reunion.prochaine_lieu ? ` – ${reunion.prochaine_lieu}` : ''}`
+      centre(t, 134, 12, gras, ROUGE)
+    }
     texte(`Rédacteur : ${e.redacteur}`, M, 60, 9, police, GRIS)
   }
 
@@ -122,7 +141,7 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
       for (const i of liste) {
         const c = contacts.find((x) => x.id === i.contact_id)
         const p = dossier.presences.find((x) => x.reunion_id === reunion.id && x.intervenant_id === i.id)
-        const lot = dossier.lots.find((l) => l.id === i.lot_id)
+        const lot = i.categorie === 'entreprise' ? dossier.lots.find((l) => l.id === i.lot_id) : undefined
         const n = cumulAbsences(dossier.presences, i.id, dossier.reunions, reunion.numero)
         const premiere = [lot ? `${lot.code} ${lot.libelle}` : '', `${nomComplet(c)}${c?.fonction ? ` – ${c.fonction}` : ''}`].filter(Boolean)
         const h = Math.max(13, premiere.length * 9.5 + 4)
@@ -289,12 +308,13 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
     }
   }
 
-  // Pied de page : numérotation
-  const total = pagesCorps.length
-  pagesCorps.forEach((p, i) => {
+  // Pied de page : numérotation « n / total », page de garde comprise
+  const toutes = doc.getPages()
+  const total = toutes.length
+  toutes.forEach((p, i) => {
     const t = `${i + 1}/${total}`
     p.drawText(t, { x: (L - police.widthOfTextAtSize(t, 8)) / 2, y: 22, size: 8, font: police, color: GRIS })
-    p.drawText('Visibat — DETB, Ville de Cherbourg-en-Cotentin', { x: M, y: 22, size: 7, font: police, color: GRIS })
+    if (pagesCorps.includes(p)) p.drawText('Visibat — DETB, Ville de Cherbourg-en-Cotentin', { x: M, y: 22, size: 7, font: police, color: GRIS })
   })
   return new Blob([await doc.save()], { type: 'application/pdf' })
 }
