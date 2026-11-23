@@ -70,6 +70,8 @@ async function tout<T>(fabrique: () => Requete): Promise<T[]> {
 }
 const actifs = <T extends { supprime_le?: string | null }>(l: T[]) => l.filter((x) => !x.supprime_le)
 
+export interface ModeleExport extends Base { nom: string; description: string | null; portee: 'systeme' | 'groupe' | 'perso' | 'dernier'; proprietaire_id: string | null; groupe_id: string | null; reglages: unknown; ordre: number }
+export const lireModeles = () => tout<ModeleExport>(() => vb().from('modele_export').select('*').is('supprime_le', null).order('ordre'))
 export const lireStatuts = () => tout<Statut>(() => vb().from('statut').select('*').is('supprime_le', null).order('ordre'))
 export const lireAgents = () => tout<Agent>(() => supabase.schema('releves').from('agent').select('id,nom,email,role,actif').order('nom'))
 export const lireContacts = () => tout<Contact>(() => vb().from('contact').select('*').is('supprime_le', null).order('nom'))

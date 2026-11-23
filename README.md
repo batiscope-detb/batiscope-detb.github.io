@@ -14,6 +14,16 @@ référentiel que la tablette (`src/moteur.ts`, `src/data/referentiel_accessibil
   (règles d'accès RLS côté base). Seule la clé *publiable* Supabase figure dans le code.
 - Les photos et plans sont servis par des liens temporaires (1 h).
 
+## Version 0.11 (Visibat : modèles d'export et PDF joint au brouillon Outlook)
+- Onglet **Export & diffusion** d'une réunion : dernier modèle utilisé, mes modèles, modèles du groupe et modèles
+  pré-configurés (CR complet, visite courante, synthèse hiérarchie / élus, extraits par entreprise, OPR par lot ou par plan,
+  mosaïque de photos). La **roue crantée** personnalise un modèle (remarques retenues, classement, photos, planning,
+  page de garde, présences, remarques générales, points pour mémoire, plans) ; enregistrement en modèle personnel
+  ou partagé avec un groupe.
+- **PDF généré directement** (texte sélectionnable, au modèle DETB) : téléchargement, ou **brouillon Outlook avec le PDF
+  joint** (destinataires en copie cachée). Extraits par entreprise : un .zip avec un PDF et un brouillon Outlook par entreprise.
+- L'aperçu imprimable suit le modèle choisi.
+
 ## Version 0.10 (Visibat : annotations des plans et planning)
 - Plans des réunions : mode « Symboles et annotations », avec la palette et les outils de Batiscope (symboles, texte,
   flèche, cote, zone, nuage, tracé libre), calques, fiche de l'annotation (valeur, orientation, taille, couleur).

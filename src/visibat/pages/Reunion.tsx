@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { statutDe, useVisibat } from '../contexte'
 import { enregistrer, modifier, type Dossier, type Observation, type Reunion } from '../donnees'
 import { ETATS, ORDRE_CATEGORIES, cumulAbsences, enRetard, etatSuivant, libelleType, penaliteAbsences, type Etat } from '../regles'
@@ -10,9 +10,9 @@ import { nomComplet } from '../composants/FicheContact'
 import { Champ, executer } from '../../composants/Ui'
 import Entete, { Onglets } from '../composants/Entete'
 import { EtiquetteStatut, aujourdhui, dateFr, dateHeureFr, depuisSaisie, versSaisie } from '../ui'
-import { emailOutlook } from '../diffusion'
 import { useUrls, urlPhoto } from '../useUrls'
 import { PlanReunion } from '../composants/Plans'
+import Export from '../composants/Export'
 
 type Onglet = 'presences' | 'observations' | 'plan' | 'cloture'
 
@@ -30,10 +30,10 @@ export default function PageReunion() {
     <main className="page">
       <Entete fil={[{ lien: `/visibat/operation/${op.id}`, libelle: op.nom }]} titre={`Réunion de chantier n° ${reunion.numero}`}
         sousTitre={`${dateHeureFr(reunion.date_reunion)} · ${reunion.lieu ?? ''}${reunion.prochaine_date ? ` · prochaine réunion : ${dateHeureFr(reunion.prochaine_date)}` : ''}`} />
-      <Onglets valeur={onglet} changer={setOnglet} choix={[['presences', 'Présences'], ['observations', 'Observations'], ['plan', 'Plans'], ['cloture', 'Clôture & diffusion']]} />
+      <Onglets valeur={onglet} changer={setOnglet} choix={[['presences', 'Présences'], ['observations', 'Observations'], ['plan', 'Plans'], ['cloture', 'Export & diffusion']]} />
       {onglet === 'presences' && <Presences dossier={dossier} reunion={reunion} recharger={recharger} />}
       {(onglet === 'observations' || onglet === 'plan') && <Observations dossier={dossier} reunion={reunion} recharger={recharger} urls={urls} surPlan={onglet === 'plan'} />}
-      {onglet === 'cloture' && <Cloture dossier={dossier} reunion={reunion} recharger={recharger} />}
+      {onglet === 'cloture' && <Cloture dossier={dossier} reunion={reunion} recharger={recharger} urls={urls} />}
     </main>
   )
 }
@@ -158,34 +158,20 @@ function Observations({ dossier, reunion, recharger, urls, surPlan }: { dossier:
   </>
 }
 
-function Cloture({ dossier, reunion, recharger }: { dossier: Dossier; reunion: Reunion; recharger: () => Promise<void> }) {
-  const { contacts, moi } = useVisibat()
+function Cloture({ dossier, reunion, recharger, urls }: { dossier: Dossier; reunion: Reunion; recharger: () => Promise<void>; urls: Map<string, string> }) {
   const maj = async (champs: Record<string, unknown>) => { if (await executer(() => modifier('reunion', reunion.id, champs).then(() => true), 'Enregistré')) await recharger() }
-  const destinataires = dossier.intervenants.filter((i) => i.diffusion).map((i) => contacts.find((c) => c.id === i.contact_id)).filter((c) => c?.email)
   return <>
-    <section className="carte pile" style={{ maxWidth: 820 }}>
-      <h2>Prochaine réunion</h2>
+    <section className="carte pile" style={{ maxWidth: 980 }}>
+      <h2 style={{ margin: 0 }}>Prochaine réunion</h2>
       <div className="grille-2">
         <Champ libelle="Date et heure"><input className="champ" type="datetime-local" defaultValue={versSaisie(reunion.prochaine_date)} onBlur={(e) => maj({ prochaine_date: depuisSaisie(e.target.value) })} /></Champ>
         <Champ libelle="Lieu"><input className="champ" defaultValue={reunion.prochaine_lieu ?? reunion.lieu ?? ''} onBlur={(e) => maj({ prochaine_lieu: e.target.value || null })} /></Champ>
       </div>
-    </section>
-    <section className="carte pile" style={{ maxWidth: 820 }}>
-      <h2>Compte rendu</h2>
       <div className="vb-barre">
-        <Link className="bouton primaire" to={`/visibat/operation/${dossier.operation.id}/reunion/${reunion.id}/impression`}>Aperçu et PDF</Link>
-        <button type="button" className="bouton" disabled={!destinataires.length} onClick={() => {
-          emailOutlook(dossier, reunion, destinataires.map((c) => c!.email!), moi.nom)
-          maj({ statut: 'diffusee', diffusee_le: new Date().toISOString() })
-        }}>Préparer l’e-mail Outlook</button>
         {reunion.statut === 'brouillon' && <button type="button" className="bouton" onClick={() => maj({ statut: 'cloturee' })}>Clôturer la réunion</button>}
-        {reunion.statut !== 'brouillon' && <button type="button" className="bouton" onClick={() => maj({ statut: 'brouillon', diffusee_le: null })}>Rouvrir</button>}
+        {reunion.statut !== 'brouillon' && <button type="button" className="bouton" onClick={() => maj({ statut: 'brouillon', diffusee_le: null })}>Rouvrir la réunion</button>}
       </div>
-      <p className="vb-discret" style={{ margin: 0 }}>
-        {destinataires.length} destinataire{destinataires.length > 1 ? 's' : ''} (intervenants « reçoit le CR » avec une adresse e-mail).
-        Le brouillon s’ouvre dans Outlook : joignez-y le PDF enregistré depuis l’aperçu, relisez, puis envoyez depuis votre adresse.
-        {reunion.diffusee_le && ` Dernière diffusion préparée le ${dateFr(reunion.diffusee_le)}.`}
-      </p>
     </section>
+    <Export dossier={dossier} reunion={reunion} urls={urls} recharger={recharger} />
   </>
 }

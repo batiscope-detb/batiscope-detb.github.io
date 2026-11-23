@@ -1,8 +1,8 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { statutDe, useVisibat } from '../contexte'
 import { ORDRE_CATEGORIES, cumulAbsences, libelleType } from '../regles'
-import { observationsVisibles, rubriques } from '../organisation'
+import { REGLAGES_DEFAUT, completer, observationsExport, regrouper } from '../export/reglages'
 import { useDossier } from '../useDossier'
 import { nomComplet } from '../composants/FicheContact'
 import { dateFr, dateHeureFr, fonce } from '../ui'
@@ -16,24 +16,24 @@ import { normaliser, nouveauPlanning } from '../planning/moteur'
 
 const Plan = lazy(() => import('../../composants/Plan').then((m) => ({ default: m.Plan })))
 
-/** Aperçu du CR (modèle « complet ») à imprimer ou enregistrer en PDF depuis le navigateur. */
+/** Aperçu du CR selon les réglages d'export choisis (modèle, roue crantée), à imprimer depuis le navigateur. */
 export default function Impression() {
   const { id, reunionId } = useParams()
   const { dossier, erreur } = useDossier(id)
   const { statuts, contacts, moi } = useVisibat()
-  const [memoire, setMemoire] = useState(true)
-  const [avecPhotos, setAvecPhotos] = useState(true)
-  const [avecPlans, setAvecPlans] = useState(true)
-  const [planning, setPlanning] = useState<'aucun' | '4' | '8' | 'complet'>('aucun')
+  const etat = useLocation().state as { reglages?: unknown } | null
+  const [r, setR] = useState(() => etat?.reglages ? completer(etat.reglages) : REGLAGES_DEFAUT)
   const urls = useUrls(dossier)
-  const reunion = dossier?.reunions.find((r) => r.id === reunionId)
-  const obs = useMemo(() => dossier && reunion ? observationsVisibles(dossier, reunion, statuts) : [], [dossier, reunion, statuts])
+  const reunion = dossier?.reunions.find((x) => x.id === reunionId)
+  const obs = useMemo(() => dossier && reunion ? observationsExport(dossier, reunion, statuts, r) : [], [dossier, reunion, statuts, r])
+  const avecPhotos = r.photos !== 'aucune', avecPlans = r.plans
+  const planning = r.planning === 'extrait_4_semaines' ? '4' : r.planning === 'extrait_8_semaines' ? '8' : r.planning
   if (erreur) return <main className="page"><p className="erreur">{erreur}</p></main>
   if (!dossier) return <div className="chargement"><span className="roue" />Chargement…</div>
   if (!reunion) return <main className="page"><p className="erreur">Réunion introuvable.</p></main>
   const op = dossier.operation
-  const affichees = obs.filter((o) => memoire || o.statut_code !== 'memoire')
-  const groupes = rubriques(dossier, affichees, contacts).filter((g) => g.observations.length)
+  const affichees = obs
+  const groupes = regrouper(dossier, obs, contacts, statuts, r)
   const presence = (i: string) => dossier.presences.find((p) => p.reunion_id === reunion.id && p.intervenant_id === i)
   const COUL: Record<string, string> = { P: '#2e7d4f', E: '#1d5fa8', A: '#c2560f', N: '#8c1d18' }
 
@@ -41,13 +41,9 @@ export default function Impression() {
     <main className="page">
       <div className="vb-titre vb-ne-pas-imprimer">
         <div><div className="vb-fil"><Link to={`/visibat/operation/${op.id}/reunion/${reunion.id}`}>← Retour à la réunion</Link></div><h1>Aperçu du compte rendu</h1></div>
-        <label className="case"><input type="checkbox" checked={memoire} onChange={(e) => setMemoire(e.target.checked)} />Points « pour mémoire »</label>
-        <label className="case"><input type="checkbox" checked={avecPhotos} onChange={(e) => setAvecPhotos(e.target.checked)} />Photos</label>
-        <label className="case"><input type="checkbox" checked={avecPlans} onChange={(e) => setAvecPlans(e.target.checked)} />Plans avec pastilles</label>
-        {op.planning_actif && op.planning != null && <label className="vb-discret">Planning{' '}
-          <select className="champ petit" value={planning} onChange={(e) => setPlanning(e.target.value as typeof planning)}>
-            <option value="aucun">Ne pas joindre</option><option value="4">Extrait : 4 semaines à venir</option><option value="8">Extrait : 8 semaines à venir</option><option value="complet">Planning complet</option>
-          </select></label>}
+        <label className="case"><input type="checkbox" checked={r.memoire} onChange={(e) => setR({ ...r, memoire: e.target.checked })} />Points « pour mémoire »</label>
+        <label className="case"><input type="checkbox" checked={avecPhotos} onChange={(e) => setR({ ...r, photos: e.target.checked ? 'vignettes' : 'aucune' })} />Photos</label>
+        <label className="case"><input type="checkbox" checked={avecPlans} onChange={(e) => setR({ ...r, plans: e.target.checked })} />Plans</label>
         <button type="button" className="bouton primaire" onClick={() => window.print()}>Imprimer / enregistrer en PDF</button>
       </div>
       <article className="vb-feuille">
@@ -60,7 +56,7 @@ export default function Impression() {
         </div>
         <p><strong>{op.nom}</strong>{op.adresse && <><br />{op.adresse}</>}{op.objet && <><br />{op.objet}</>}</p>
 
-        <p style={{ fontSize: 11 }}><b style={{ color: COUL.P }}>P</b> présent · <b style={{ color: COUL.E }}>E</b> excusé · <b style={{ color: COUL.A }}>A</b> absent · <b style={{ color: COUL.N }}>N</b> absent non excusé · C convoqué à la prochaine réunion · Abs. nombre d’absences</p>
+        {r.presences && <><p style={{ fontSize: 11 }}><b style={{ color: COUL.P }}>P</b> présent · <b style={{ color: COUL.E }}>E</b> excusé · <b style={{ color: COUL.A }}>A</b> absent · <b style={{ color: COUL.N }}>N</b> absent non excusé · C convoqué à la prochaine réunion · Abs. nombre d’absences</p>
         {ORDRE_CATEGORIES.map((cat) => {
           const liste = dossier.intervenants.filter((i) => i.categorie === cat)
           if (!liste.length) return null
@@ -81,6 +77,7 @@ export default function Impression() {
               })}</tbody>
             </table>)
         })}
+        </>}
         {(op.debut_travaux || op.objectif_reception) && <p><b>Calendrier :</b> {op.debut_travaux && `début des travaux ${dateFr(op.debut_travaux)}`}{op.objectif_reception && ` · objectif de réception ${dateFr(op.objectif_reception)}`}</p>}
         {op.clause_diffusion && <p style={{ fontStyle: 'italic' }}>{op.clause_diffusion}</p>}
 
