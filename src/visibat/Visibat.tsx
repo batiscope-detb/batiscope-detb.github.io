@@ -32,6 +32,15 @@ export default function Visibat() {
     setStatuts(s); setGroupes(g)
   }, [])
 
+  // Dans Visibat, « Ajouter à l'écran d'accueil » installe l'icône Visibat (ouverture directe sur les chantiers).
+  useEffect(() => {
+    const lien = document.getElementById('manifeste') as HTMLLinkElement | null
+    const titre = document.title
+    lien?.setAttribute('href', './visibat.webmanifest')
+    document.title = 'Visibat'
+    return () => { lien?.setAttribute('href', './manifest.webmanifest'); document.title = titre }
+  }, [])
+
   useEffect(() => {
     (async () => {
       try {

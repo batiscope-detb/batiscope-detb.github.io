@@ -1,0 +1,16 @@
+{
+  "id": "./?app=visibat",
+  "name": "Visibat — CR de chantier DETB",
+  "short_name": "Visibat",
+  "description": "Comptes rendus de réunions de chantier — Direction Études et Travaux Bâtiments, Ville de Cherbourg-en-Cotentin",
+  "start_url": "./?app=visibat#/visibat",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F6F5FA",
+  "theme_color": "#400241",
+  "lang": "fr",
+  "icons": [
+    { "src": "visibat-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "visibat-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
