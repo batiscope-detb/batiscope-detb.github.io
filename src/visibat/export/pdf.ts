@@ -19,7 +19,10 @@ export interface EntreePdf {
   destinataire?: string
   /** Photo de couverture (opération, sinon bâtiment Batiscope). */
   photoCouverture?: string | null
+  /** Direction pilote de l'opération : en-tête et pied de page. */
+  direction?: { nom: string; sigle: string; pole: string | null; pied: string | null } | null
 }
+const DETB = { nom: 'Direction Études et Travaux Bâtiments', sigle: 'DETB', pole: 'Pôle Patrimoine et Cadre de vie', pied: null }
 
 const L = 595.28, H = 841.89, M = 40, LARGEUR = L - 2 * M
 const ENCRE = rgb(0.11, 0.106, 0.122), GRIS = rgb(0.36, 0.333, 0.376), FILET = rgb(0.85, 0.85, 0.85), ROUGE = rgb(0.702, 0.149, 0.118)
@@ -48,13 +51,14 @@ async function octets(url: string | undefined): Promise<Uint8Array | null> {
 export async function genererPdf(e: EntreePdf): Promise<Blob> {
   const { dossier, reunion, reglages: r, statuts, contacts, urls } = e
   const op = dossier.operation
+  const dir = e.direction ?? DETB
   const teinte = PALETTES[r.palette] ?? PALETTES.prune
   const PRUNE = hex(teinte.fonce), PRUNE_PALE = hex(teinte.pale)
   const ROUGE_DOC = r.palette === 'nb' ? ENCRE : ROUGE
   const nb = r.palette === 'nb'
   const statutCouleur = (h: string) => couleurDoc(h, r)
   const doc = await PDFDocument.create()
-  doc.setTitle(`Réunion de chantier n° ${reunion.numero} — ${op.nom}`); doc.setAuthor(e.redacteur); doc.setCreator('Visibat — DETB')
+  doc.setTitle(`Réunion de chantier n° ${reunion.numero} — ${op.nom}`); doc.setAuthor(e.redacteur); doc.setCreator(`Visibat — ${dir.sigle}`)
   const police = await doc.embedFont(StandardFonts.Helvetica), gras = await doc.embedFont(StandardFonts.HelveticaBold), italique = await doc.embedFont(StandardFonts.HelveticaOblique)
   const logoBrut = await octets(`${import.meta.env.BASE_URL}logo-cherbourg.jpg`)
   const logoOctets = logoBrut && nb ? await enGris(logoBrut).catch(() => logoBrut) : logoBrut
@@ -106,8 +110,8 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
     page = doc.addPage([L, H])
     if (logo) { const ll = 170, hl = (logo.height / logo.width) * ll; page.drawImage(logo, { x: M, y: H - 40 - hl, width: ll, height: hl }) }
     const droite = (t: string, yy: number, taille: number, f: PDFFont, c: RGB) => texte(t, L - M - f.widthOfTextAtSize(propre(t), taille), yy, taille, f, c)
-    droite('Direction Études et Travaux Bâtiments', H - 58, 9.5, gras, PRUNE)
-    droite('Pôle Patrimoine et Cadre de vie', H - 71, 9, police, GRIS)
+    droite(dir.nom, H - 58, 9.5, gras, PRUNE)
+    if (dir.pole) droite(dir.pole, H - 71, 9, police, GRIS)
     const centre = (t: string, yy: number, taille: number, f: PDFFont, c: RGB = ENCRE) => texte(t, (L - f.widthOfTextAtSize(propre(t), taille)) / 2, yy, taille, f, c)
     centre(`Réunion de chantier n° ${reunion.numero}`, H - 170, 26, gras, PRUNE)
     centre(dateHeure(reunion.date_reunion), H - 194, 13, police)
@@ -323,13 +327,15 @@ export async function genererPdf(e: EntreePdf): Promise<Blob> {
     }
   }
 
+  const couperPied = (t: string) => { let x = propre(t.replace(/\s*\n\s*/g, ' · ')); while (x.length > 1 && police.widthOfTextAtSize(x, 6.5) > LARGEUR) x = x.slice(0, -2) + '…'; return x }
   // Pied de page : numérotation « n / total », page de garde comprise
   const toutes = doc.getPages()
   const total = toutes.length
   toutes.forEach((p, i) => {
     const t = `${i + 1}/${total}`
     p.drawText(t, { x: (L - police.widthOfTextAtSize(t, 8)) / 2, y: 22, size: 8, font: police, color: GRIS })
-    if (pagesCorps.includes(p)) p.drawText('Visibat — DETB, Ville de Cherbourg-en-Cotentin', { x: M, y: 22, size: 7, font: police, color: GRIS })
+    if (pagesCorps.includes(p)) p.drawText(propre(`Visibat — ${dir.sigle}, Ville de Cherbourg-en-Cotentin`), { x: M, y: 22, size: 7, font: police, color: GRIS })
+    if (dir.pied) { const t = couperPied(dir.pied); p.drawText(t, { x: (L - police.widthOfTextAtSize(t, 6.5)) / 2, y: 12, size: 6.5, font: police, color: GRIS }) }
   })
   return new Blob([await doc.save()], { type: 'application/pdf' })
 }

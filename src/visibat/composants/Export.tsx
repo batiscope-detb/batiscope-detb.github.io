@@ -9,7 +9,7 @@ import { LIBELLES, PALETTES, completer, observationsExport, parEntreprise, regro
 
 /** Export et diffusion du CR : modèles (dernier utilisé, personnels, de groupe, pré-configurés), roue crantée, PDF, brouillon Outlook. */
 export default function Export({ dossier, reunion, urls, recharger }: { dossier: Dossier; reunion: Reunion; urls: Map<string, string>; recharger: () => Promise<void> }) {
-  const { moi, statuts, contacts, groupes, membres } = useVisibat()
+  const { moi, statuts, contacts, groupes, membres, directions } = useVisibat()
   const navigate = useNavigate()
   const [modeles, setModeles] = useState<ModeleExport[]>([])
   const [choix, setChoix] = useState<string | null>(null)
@@ -39,7 +39,7 @@ export default function Export({ dossier, reunion, urls, recharger }: { dossier:
     const { genererPdf } = await import('../export/pdf')
     const obs = destinataire?.observations ?? observationsExport(dossier, reunion, statuts, r)
     const photoCouverture = r.garde ? await urlPhotoChantier(dossier.operation).catch(() => null) : null
-    return genererPdf({ dossier, reunion, reglages: r, statuts, contacts, urls, redacteur: moi.nom, observations: obs, rubriques: regrouper(dossier, obs, contacts, statuts, r), destinataire: destinataire?.nom, photoCouverture })
+    return genererPdf({ dossier, reunion, reglages: r, statuts, contacts, urls, redacteur: moi.nom, observations: obs, rubriques: regrouper(dossier, obs, contacts, statuts, r), destinataire: destinataire?.nom, photoCouverture, direction: directions.find((d) => d.id === dossier.operation.direction_id) })
   }
   const nomPdf = (suffixe = '') => `CR ${reunion.numero} - ${nomFichier(dossier.operation.nom)}${suffixe}.pdf`
   const destinataires = dossier.intervenants.filter((i) => i.diffusion).map((i) => contacts.find((c) => c.id === i.contact_id)?.email).filter((x): x is string => !!x)
@@ -165,7 +165,7 @@ function RoueCrantee({ modele, initial, fermer, appliquer, enregistrer, mettreAJ
         <div className="carte pile" style={{ padding: 12, gap: 8 }}>
           <strong>Enregistrer comme nouveau modèle</strong>
           <div className="grille-2">
-            <Champ libelle="Nom du modèle"><input className="champ" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="CR CEC — DETB" /></Champ>
+            <Champ libelle="Nom du modèle"><input className="champ" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="CR de chantier — modèle du service" /></Champ>
             <Champ libelle="Visible par">
               <select className="champ" value={groupe} onChange={(e) => setGroupe(e.target.value)}>
                 <option value="">Moi seulement</option>

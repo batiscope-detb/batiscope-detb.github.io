@@ -7,13 +7,13 @@ import Entete from '../composants/Entete'
 import { dateHeureFr } from '../ui'
 import { preparerHorsLigne } from '../useUrls'
 
-type Vue = 'miens' | 'groupe' | 'tous'
+type Vue = 'miens' | 'groupe' | 'direction' | 'tous'
 const lireVue = (): Vue => { try { return (localStorage.getItem('visibat-vue') as Vue) || 'miens' } catch { return 'miens' } }
 const CLAUSE = 'Le présent compte rendu est transmis par e-mail à l’ensemble des entreprises. La non-réception d’observations écrites au sujet du présent procès-verbal dans un délai de huit jours sera considérée comme une acceptation pleine et entière de tous les destinataires.'
 
-/** Accueil de Visibat : les opérations (chantiers) de l'agent, de ses groupes ou de toute la DETB. */
+/** Accueil de Visibat : les opérations (chantiers) de l'agent, de ses groupes, de sa direction ou de toutes les directions. */
 export default function Chantiers() {
-  const { moi, groupes, membres } = useVisibat()
+  const { moi, groupes, membres, directions, maDirection } = useVisibat()
   const navigate = useNavigate()
   const [ops, setOps] = useState<Operation[] | null>(null)
   const [reunions, setReunions] = useState<Reunion[]>([])
@@ -33,7 +33,7 @@ export default function Chantiers() {
 
   const mesGroupes = useMemo(() => new Set(membres.filter((m) => m.agent_id === moi.id).map((m) => m.groupe_id)), [membres, moi.id])
   const visibles = (ops ?? []).filter((o) => o.archive === archives).filter((o) =>
-    vue === 'tous' ? true : vue === 'miens' ? o.proprietaire_id === moi.id : !!o.groupe_id && mesGroupes.has(o.groupe_id))
+    vue === 'tous' ? true : vue === 'direction' ? o.direction_id === maDirection?.id : vue === 'miens' ? o.proprietaire_id === moi.id : !!o.groupe_id && mesGroupes.has(o.groupe_id))
   const derniere = (id: string) => reunions.filter((r) => r.operation_id === id).sort((a, b) => b.numero - a.numero)[0]
   const choisir = (v: Vue) => { setVue(v); try { localStorage.setItem('visibat-vue', v) } catch { /* indisponible */ } }
 
@@ -47,7 +47,8 @@ export default function Chantiers() {
         <div className="vb-puces" role="group" aria-label="Opérations affichées">
           <button type="button" className="vb-puce" aria-pressed={vue === 'miens'} onClick={() => choisir('miens')}>Mes projets</button>
           <button type="button" className="vb-puce" aria-pressed={vue === 'groupe'} onClick={() => choisir('groupe')}>Projets du groupe</button>
-          <button type="button" className="vb-puce" aria-pressed={vue === 'tous'} onClick={() => choisir('tous')}>Toute la DETB</button>
+          {maDirection && <button type="button" className="vb-puce" aria-pressed={vue === 'direction'} onClick={() => choisir('direction')}>{maDirection.sigle}</button>}
+          {directions.length > 1 && <button type="button" className="vb-puce" aria-pressed={vue === 'tous'} onClick={() => choisir('tous')}>Toutes les directions</button>}
         </div>
         <label className="case"><input type="checkbox" checked={archives} onChange={(e) => setArchives(e.target.checked)} />Opérations archivées</label>
       </div>
@@ -60,10 +61,12 @@ export default function Chantiers() {
         {visibles.map((o) => {
           const r = derniere(o.id)
           const g = groupes.find((x) => x.id === o.groupe_id)
+          const d = directions.length > 1 ? directions.find((x) => x.id === o.direction_id) : undefined
           return (
             <Link key={o.id} to={`/visibat/operation/${o.id}`} className="vb-carte">
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <strong style={{ flex: 1, fontSize: 16 }}>{o.nom}</strong>
+                {d && <span className="etiquette" title={d.nom}>{d.sigle}</span>}
                 <span className="etiquette" style={{ background: 'var(--pale)', color: 'var(--violet)' }}>{g ? g.nom : 'Personnel'}</span>
               </div>
               {o.objet && <span className="vb-discret">{o.objet}</span>}
@@ -80,9 +83,9 @@ export default function Chantiers() {
 }
 
 function NouvelleOperation({ ouvert, fermer, apres }: { ouvert: boolean; fermer: () => void; apres: (id: string) => void }) {
-  const { moi, groupes, membres } = useVisibat()
+  const { moi, groupes, membres, directions, maDirection } = useVisibat()
   const [batiments, setBatiments] = useState<Awaited<ReturnType<typeof lireBatiments>>>([])
-  const vide = { nom: '', objet: '', adresse: '', projet_id: '', groupe_id: '', debut_travaux: '', objectif_reception: '' }
+  const vide = { nom: '', objet: '', adresse: '', projet_id: '', groupe_id: '', debut_travaux: '', objectif_reception: '', direction_id: maDirection?.id ?? '' }
   const [f, setF] = useState(vide)
   useEffect(() => { if (ouvert) { setF(vide); lireBatiments().then(setBatiments).catch(() => setBatiments([])) } }, [ouvert]) // eslint-disable-line react-hooks/exhaustive-deps
   const mesGroupes = groupes.filter((g) => membres.some((m) => m.groupe_id === g.id && m.agent_id === moi.id))
@@ -92,6 +95,7 @@ function NouvelleOperation({ ouvert, fermer, apres }: { ouvert: boolean; fermer:
     const o = await executer(() => enregistrer('operation', {
       nom: f.nom.trim(), objet: f.objet || null, adresse: f.adresse || null, projet_id: f.projet_id || null, proprietaire_id: moi.id,
       groupe_id: f.groupe_id || null, debut_travaux: f.debut_travaux || null, objectif_reception: f.objectif_reception || null, clause_diffusion: CLAUSE,
+      direction_id: f.direction_id || null,
     }), 'Opération créée')
     if (o) { fermer(); apres(o.id) }
   }
@@ -115,6 +119,12 @@ function NouvelleOperation({ ouvert, fermer, apres }: { ouvert: boolean; fermer:
           <Champ libelle="Début des travaux"><input className="champ" type="date" value={f.debut_travaux} onChange={(e) => setF({ ...f, debut_travaux: e.target.value })} /></Champ>
           <Champ libelle="Objectif de réception"><input className="champ" type="date" value={f.objectif_reception} onChange={(e) => setF({ ...f, objectif_reception: e.target.value })} /></Champ>
         </div>
+        {directions.length > 1 && (
+          <Champ libelle="Direction pilote" aide="Son en-tête figure sur les comptes rendus.">
+            <select className="champ" value={f.direction_id} onChange={(e) => setF({ ...f, direction_id: e.target.value })}>
+              {directions.map((d) => <option key={d.id} value={d.id}>{d.sigle} — {d.nom}</option>)}
+            </select>
+          </Champ>)}
         <Champ libelle="Partage">
           <select className="champ" value={f.groupe_id} onChange={(e) => setF({ ...f, groupe_id: e.target.value })}>
             <option value="">Projet personnel</option>

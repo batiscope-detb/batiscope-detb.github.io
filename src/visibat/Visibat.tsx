@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
 import { supabase } from '../donnees'
-import { ContexteVisibat } from './contexte'
-import { lireAgents, lireContacts, lireGroupes, lireStatuts, type Agent, type Contact, type Groupe, type GroupeMembre, type Statut } from './donnees'
+import { ContexteVisibat, directionDe } from './contexte'
+import { lireAffectations, lireAgents, lireContacts, lireDirections, lireGroupes, lireStatuts, type Affectation, type Agent, type Contact, type Direction, type Groupe, type GroupeMembre, type Statut } from './donnees'
 import Chantiers from './pages/Chantiers'
 import Carnet from './pages/Carnet'
 import PageOperation from './pages/Operation'
@@ -24,12 +24,14 @@ export default function Visibat() {
   const [statuts, setStatuts] = useState<Statut[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const [groupes, setGroupes] = useState<{ groupes: Groupe[]; membres: GroupeMembre[] }>({ groupes: [], membres: [] })
+  const [directions, setDirections] = useState<Direction[]>([])
+  const [affectations, setAffectations] = useState<Affectation[]>([])
   const [erreur, setErreur] = useState<string | null>(null)
 
   const rechargerContacts = useCallback(async () => setContacts(await lireContacts()), [])
   const rechargerReferentiels = useCallback(async () => {
-    const [s, g] = await Promise.all([lireStatuts(), lireGroupes()])
-    setStatuts(s); setGroupes(g)
+    const [s, g, d, a] = await Promise.all([lireStatuts(), lireGroupes(), lireDirections(), lireAffectations()])
+    setStatuts(s); setGroupes(g); setDirections(d); setAffectations(a)
   }, [])
 
   // Dans Visibat, « Ajouter à l'écran d'accueil » installe l'icône Visibat (ouverture directe sur les chantiers).
@@ -46,7 +48,11 @@ export default function Visibat() {
       try {
         demarrerSynchro()
         // Session lue sur l'appareil (getUser interrogerait le serveur, impossible hors ligne).
-        const { data: { session } } = await supabase.auth.getSession()
+        // Hors ligne, getSession peut rester en attente (verrou d'authentification) : délai de garde, puis session gardée.
+        const session = await Promise.race([
+          supabase.auth.getSession().then((r) => r.data.session).catch(() => null),
+          new Promise<null>((ok) => setTimeout(() => ok(null), navigator.onLine ? 8000 : 1500)),
+        ])
         const data = { user: session?.user ?? utilisateurStocke() }
         const [ag] = await Promise.all([lireAgents(), rechargerReferentiels(), rechargerContacts()])
         setAgents(ag)
@@ -58,7 +64,10 @@ export default function Visibat() {
   if (erreur) return <main className="page"><p className="erreur">Impossible de charger Visibat : {erreur}</p></main>
   if (!moi) return <div className="chargement"><span className="roue" />Chargement de Visibat…</div>
   return (
-    <ContexteVisibat.Provider value={{ moi, agents, statuts, contacts, groupes: groupes.groupes, membres: groupes.membres, rechargerContacts, rechargerReferentiels }}>
+    <ContexteVisibat.Provider value={{
+      moi, agents, statuts, contacts, groupes: groupes.groupes, membres: groupes.membres, directions, affectations,
+      maDirection: directionDe({ directions, affectations }, moi.id) ?? directions[0] ?? null, rechargerContacts, rechargerReferentiels,
+    }}>
       <Routes>
         <Route index element={<Chantiers />} />
         <Route path="carnet" element={<Carnet />} />

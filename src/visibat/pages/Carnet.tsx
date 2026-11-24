@@ -7,7 +7,7 @@ import Entete from '../composants/Entete'
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-/** Carnet d'adresses partagé par la DETB. */
+/** Carnet d'adresses commun à toutes les directions. */
 export default function Carnet() {
   const { contacts } = useVisibat()
   const [type, setType] = useState('tous')
@@ -21,7 +21,7 @@ export default function Carnet() {
 
   return (
     <main className="page">
-      <Entete fil={[{ lien: '/visibat/carnet', libelle: 'Carnet d’adresses' }]} titre="Carnet d’adresses" sousTitre="Partagé par toute la DETB, réutilisé d’une opération à l’autre">
+      <Entete fil={[{ lien: '/visibat/carnet', libelle: 'Carnet d’adresses' }]} titre="Carnet d’adresses" sousTitre="Commun à toutes les directions, réutilisé d’une opération à l’autre">
         <input className="champ" type="search" placeholder="Nom, société, fonction…" aria-label="Rechercher un contact" value={q} onChange={(e) => setQ(e.target.value)} />
         <button type="button" className="bouton primaire" onClick={() => setFiche({ contact: null })}>+ Contact</button>
       </Entete>

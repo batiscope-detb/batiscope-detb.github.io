@@ -21,7 +21,7 @@ const Plan = lazy(() => import('../../composants/Plan').then((m) => ({ default: 
 export default function Impression() {
   const { id, reunionId } = useParams()
   const { dossier, erreur } = useDossier(id)
-  const { statuts, contacts, moi } = useVisibat()
+  const { statuts, contacts, moi, directions } = useVisibat()
   const etat = useLocation().state as { reglages?: unknown } | null
   const [r, setR] = useState(() => etat?.reglages ? completer(etat.reglages) : REGLAGES_DEFAUT)
   const urls = useUrls(dossier)
@@ -62,7 +62,7 @@ export default function Impression() {
             <div><h1>Réunion de chantier n° {reunion.numero}</h1><div>{dateHeureFr(reunion.date_reunion)} · {reunion.lieu}</div></div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <strong>Direction Études Travaux Bâtiments</strong><br />Ville de Cherbourg-en-Cotentin<br />Rédacteur : {moi.nom}
+            <strong>{directions.find((d) => d.id === op.direction_id)?.nom ?? 'Direction Études et Travaux Bâtiments'}</strong><br />Ville de Cherbourg-en-Cotentin<br />Rédacteur : {moi.nom}
             {reunion.prochaine_date && <div style={{ color: r.palette === 'nb' ? '#000' : '#b3261e', fontWeight: 700, marginTop: 4 }}>Prochaine réunion : {dateHeureFr(reunion.prochaine_date)}{reunion.prochaine_lieu ? ` – ${reunion.prochaine_lieu}` : ''}</div>}
           </div>
         </div>

@@ -216,7 +216,7 @@ function Lots({ dossier, recharger }: { dossier: Dossier; recharger: () => Promi
 }
 
 function Fiche({ dossier, recharger }: { dossier: Dossier; recharger: () => Promise<void> }) {
-  const { moi, groupes, membres } = useVisibat()
+  const { moi, groupes, membres, directions } = useVisibat()
   const op = dossier.operation
   const [batiments, setBatiments] = useState<Awaited<ReturnType<typeof lireBatiments>>>([])
   const [photo, setPhoto] = useState<string | null>(null)
@@ -279,6 +279,13 @@ function Fiche({ dossier, recharger }: { dossier: Dossier; recharger: () => Prom
           </select>
         </Champ>
       </div>
+      {directions.length > 1 && (
+        <Champ libelle="Direction pilote" aide="Son en-tête figure sur les comptes rendus.">
+          <select className="champ" value={op.direction_id ?? ''} onChange={(e) => maj({ direction_id: e.target.value || null })}>
+            {!op.direction_id && <option value="">—</option>}
+            {directions.map((d) => <option key={d.id} value={d.id}>{d.sigle} — {d.nom}</option>)}
+          </select>
+        </Champ>)}
       <Champ libelle="Clause de diffusion (en fin de liste des intervenants)">
         <textarea className="champ" rows={3} defaultValue={op.clause_diffusion ?? ''} onBlur={(e) => maj({ clause_diffusion: e.target.value || null })} />
       </Champ>

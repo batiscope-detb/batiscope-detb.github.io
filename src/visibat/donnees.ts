@@ -13,7 +13,10 @@ export const vb = () => supabase.schema('visibat')
 interface Base { id: string; maj_le?: string; supprime_le?: string | null }
 export interface Agent { id: string; nom: string; email: string | null; role: string; actif: boolean }
 export type Statut = StatutDef & { id: string }
-export interface Groupe extends Base { nom: string }
+export interface Groupe extends Base { nom: string; direction_id: string | null }
+/** Direction de la Ville utilisant Visibat (DETB, …) : en-tête et pied de page de ses CR. */
+export interface Direction extends Base { nom: string; sigle: string; pole: string | null; pied: string | null; ordre: number }
+export interface Affectation extends Base { agent_id: string; direction_id: string }
 export interface GroupeMembre extends Base { groupe_id: string; agent_id: string }
 export interface Contact extends Base {
   nom: string; prenom: string | null; fonction: string | null; societe: string | null; type_intervenant: string
@@ -23,6 +26,7 @@ export interface Operation extends Base {
   nom: string; objet: string | null; adresse: string | null; projet_id: string | null; proprietaire_id: string | null
   groupe_id: string | null; debut_travaux: string | null; objectif_reception: string | null; photo_path: string | null
   penalite_absence: number | null; clause_diffusion: string | null; planning_actif: boolean; planning: unknown; archive: boolean
+  direction_id: string | null
 }
 export interface Lot extends Base { operation_id: string; code: string; libelle: string; couleur: string | null; marche: string | null; ordre: number }
 export interface Intervenant extends Base {
@@ -86,6 +90,9 @@ export const lireGroupes = async () => ({
   groupes: await liste<Groupe>('groupes', 'groupe', () => tout(() => vb().from('groupe').select('*').is('supprime_le', null).order('nom'))),
   membres: await liste<GroupeMembre>('membres', 'groupe_membre', () => tout(() => vb().from('groupe_membre').select('*').is('supprime_le', null))),
 })
+export const lireDirections = async () => (await liste<Direction>('directions', 'direction', () => tout(() => vb().from('direction').select('*').is('supprime_le', null).order('ordre'))))
+  .sort((a, b) => a.ordre - b.ordre || a.sigle.localeCompare(b.sigle, 'fr'))
+export const lireAffectations = () => liste<Affectation>('affectations', 'affectation', () => tout(() => vb().from('affectation').select('*').is('supprime_le', null)))
 export const lireOperations = async () => (await liste<Operation>('operations', 'operation', () => tout(() => vb().from('operation').select('*').is('supprime_le', null).order('nom'))))
   .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 /** Réunions de toutes les opérations (pour l'accueil : prochaine réunion, numéro). */

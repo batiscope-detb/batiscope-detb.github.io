@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, createContext, useContext } from 'react'
-import { NavLink, Route, Routes, Link } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, chargerPatrimoine, type Patrimoine } from './donnees'
 import { definirNomsAgents } from './ecriture'
@@ -72,7 +72,8 @@ export default function App() {
         } catch { /* stockage indisponible */ }
         setNomAgent((data?.nom as string | undefined) ?? session.user.email ?? '')
         setProfil(data ? { role: data.role as string, actif: !!data.actif } : null)
-        if (data?.actif && !provisoire) {
+        // Compte « Visibat uniquement » : pas de chargement du patrimoine (et pas d'accès aux données correspondantes).
+        if (data?.actif && !provisoire && data.role !== 'visibat') {
           recharger()
           supabase.schema('releves').from('agent').select('id,nom').then(({ data: d }) => definirNomsAgents(new Map((d ?? []).map((a) => [a.id as string, a.nom as string]))))
         }
@@ -85,7 +86,7 @@ export default function App() {
   if (!profil?.actif) return (
     <div className="premiere-connexion"><div>
       <h1 style={{ fontSize: 20 }}>Compte non activé</h1>
-      <p>Votre compte ({session.user.email}) n'a pas accès aux relevés. Demandez à un administrateur de la DETB de l'activer.</p>
+      <p>Votre compte ({session.user.email}) n'est pas activé. Demandez à un administrateur de l'activer.</p>
       <div><button className="bouton" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div>
     </div></div>
   )
@@ -99,6 +100,7 @@ export default function App() {
     </div></div>
   )
   const moi: Moi = { id: session.user.id, nom: nomAgent, email: session.user.email ?? '', role: profil.role }
+  const seulVisibat = profil.role === 'visibat'
 
   const initiales = nomAgent.split(/[\s.@]+/).filter(Boolean).slice(0, 2).map((m) => m[0]?.toUpperCase()).join('')
   return (
@@ -109,18 +111,20 @@ export default function App() {
           <span><b>Batiscope</b><small>Ville de Cherbourg-en-Cotentin</small></span>
         </button>
         <nav className="nav" aria-label="Navigation principale">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? 'actif' : '')}>Tableau de bord</NavLink>
-          <NavLink to="/referentiel" className={({ isActive }) => (isActive ? 'actif' : '')}>Référentiel accessibilité</NavLink>
+          {!seulVisibat && <>
+            <NavLink to="/" end className={({ isActive }) => (isActive ? 'actif' : '')}>Tableau de bord</NavLink>
+            <NavLink to="/referentiel" className={({ isActive }) => (isActive ? 'actif' : '')}>Référentiel accessibilité</NavLink>
+          </>}
           <NavLink to="/visibat" className={({ isActive }) => (isActive ? 'actif' : '')} title="Visites et comptes rendus de chantier"><Logo taille={20} blanc /> Visibat</NavLink>
         </nav>
         <div className="compte">
-          <label className={`interrupteur clair${edition ? ' actif' : ''}`} title="Autorise les modifications (fiches, plans, relevés)">
+          {!seulVisibat && <label className={`interrupteur clair${edition ? ' actif' : ''}`} title="Autorise les modifications (fiches, plans, relevés)">
             <input type="checkbox" checked={edition} onChange={basculerEdition} />
             <span className="glissiere" aria-hidden="true" />
             Modification
-          </label>
+          </label>}
           {donnees && <span title="Heure du dernier chargement">À jour à {donnees.chargeLe.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
-          <button className="lien-clair" onClick={recharger} title="Recharger les données du serveur">Actualiser</button>
+          {!seulVisibat && <button className="lien-clair" onClick={recharger} title="Recharger les données du serveur">Actualiser</button>}
           <button type="button" className="pastille" style={{ border: 'none', color: '#fff', cursor: 'pointer' }} title={`${nomAgent} — paramètres`} onClick={() => setParametres(true)}>{initiales || '?'}</button>
         </div>
       </header>
@@ -128,7 +132,8 @@ export default function App() {
         {/* Visibat fonctionne aussi hors ligne : il ne dépend pas du chargement du patrimoine. */}
         <Route path="/visibat/*" element={<Visibat />} />
         <Route path="*" element={
-          erreur ? <main className="page"><p className="erreur">{navigator.onLine ? `Impossible de charger les données : ${erreur}` : 'Hors connexion : le patrimoine n’est pas disponible. Visibat reste utilisable (saisie conservée sur l’appareil).'}
+          seulVisibat ? <Navigate to="/visibat" replace />
+          : erreur ? <main className="page"><p className="erreur">{navigator.onLine ? `Impossible de charger les données : ${erreur}` : 'Hors connexion : le patrimoine n’est pas disponible. Visibat reste utilisable (saisie conservée sur l’appareil).'}
             {!navigator.onLine && <> <Link to="/visibat">Ouvrir Visibat</Link></>}</p></main>
             : !donnees ? <div className="chargement"><span className="roue" />Chargement du patrimoine…</div>
               : <Routes>
@@ -143,7 +148,7 @@ export default function App() {
       </Routes>
       <Notifications />
       <Parametres ouvert={parametres} fermer={() => setParametres(false)} moi={moi} renommer={setNomAgent} />
-      <footer className="pied">Batiscope v{__VERSION__} — Direction Études et Travaux Bâtiments</footer>
+      <footer className="pied">{seulVisibat ? `Visibat (Batiscope v${__VERSION__}) — Ville de Cherbourg-en-Cotentin` : `Batiscope v${__VERSION__} — Direction Études et Travaux Bâtiments`}</footer>
     </ContexteDonnees.Provider>
   )
 }

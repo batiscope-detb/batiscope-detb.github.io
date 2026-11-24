@@ -19,7 +19,8 @@ function cleSecrete(): string {
   return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 }
 
-const ROLES = ['agent', 'admin', 'tablette']
+// « visibat » : compte limité à Visibat (autres directions de la Ville).
+const ROLES = ['agent', 'admin', 'tablette', 'visibat']
 const emailValide = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
 Deno.serve(async (req) => {
@@ -77,6 +78,10 @@ Deno.serve(async (req) => {
         // Profil refusé : on supprime le compte tout juste créé pour ne pas laisser de compte orphelin.
         await admin.auth.admin.deleteUser(cree.user.id).catch(() => undefined)
         throw ea
+      }
+      // Direction de rattachement dans Visibat (facultative).
+      if (typeof corps.directionId === 'string' && corps.directionId) {
+        await admin.schema('visibat').from('affectation').upsert({ agent_id: cree.user.id, direction_id: corps.directionId }, { onConflict: 'agent_id' })
       }
       return repondre({ ok: true, id: cree.user.id })
     }

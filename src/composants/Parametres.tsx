@@ -7,6 +7,7 @@ import { motDePasseProvisoire, reglages, type Taille, type Theme } from '../regl
 import bibliotheque from '../data/symboles_plan.json'
 import { Champ, Dialogue, executer, signaler } from './Ui'
 import ParametresVisibat from '../visibat/composants/ParametresVisibat'
+import { lireDirections, type Direction } from '../visibat/donnees'
 
 export interface Moi { id: string; nom: string; email: string; role: string }
 type Onglet = 'compte' | 'apparence' | 'utilisateurs' | 'listes' | 'veille' | 'visibat' | 'apropos'
@@ -17,7 +18,9 @@ export function Parametres({ ouvert, fermer, moi, renommer }: { ouvert: boolean;
   const admin = moi.role === 'admin'
   const onglets: { id: Onglet; libelle: string }[] = [
     { id: 'compte', libelle: 'Mon compte' }, { id: 'apparence', libelle: 'Apparence' },
-    ...(admin ? [{ id: 'utilisateurs' as Onglet, libelle: 'Utilisateurs' }, { id: 'listes' as Onglet, libelle: 'Listes' }] : []), { id: 'veille', libelle: 'Veille réglementaire' }, { id: 'visibat', libelle: 'Visibat' }, { id: 'apropos', libelle: 'À propos' },
+    ...(admin ? [{ id: 'utilisateurs' as Onglet, libelle: 'Utilisateurs' }, { id: 'listes' as Onglet, libelle: 'Listes' }] : []),
+    // Compte « Visibat uniquement » : pas de veille réglementaire (données accessibilité).
+    ...(moi.role === 'visibat' ? [] : [{ id: 'veille' as Onglet, libelle: 'Veille réglementaire' }]), { id: 'visibat', libelle: 'Visibat' }, { id: 'apropos', libelle: 'À propos' },
   ]
   return (
     <Dialogue titre="Paramètres" ouvert={ouvert} fermer={fermer} large>
@@ -54,7 +57,7 @@ function Compte({ moi, renommer }: { moi: Moi; renommer: (nom: string) => void }
         </Champ>
         <Champ libelle="Adresse de connexion"><input className="champ" value={moi.email} readOnly /></Champ>
       </div>
-      <p className="note-param">Rôle : <b>{moi.role === 'admin' ? 'Administrateur' : moi.role === 'tablette' ? 'Tablette partagée' : 'Agent'}</b></p>
+      <p className="note-param">Rôle : <b>{moi.role === 'admin' ? 'Administrateur' : moi.role === 'tablette' ? 'Tablette partagée' : moi.role === 'visibat' ? 'Visibat uniquement' : 'Agent'}</b></p>
       <FormulaireMotDePasse />
       <div><button type="button" className="bouton danger" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div>
     </div>
@@ -171,7 +174,7 @@ function Utilisateurs({ moi }: { moi: Moi }) {
                 {a.mdp_provisoire && <span className="etiquette e-ambre" style={{ marginTop: 4 }}>Mot de passe provisoire</span>}</td>
               <td><select className="champ petit" value={a.role} disabled={a.id === moi.id} aria-label={`Rôle de ${a.nom}`}
                 onChange={(e) => modifier(a, { role: e.target.value }, 'Rôle modifié')}>
-                <option value="agent">Agent</option><option value="admin">Administrateur</option><option value="tablette">Tablette partagée</option></select></td>
+                <option value="agent">Agent</option><option value="admin">Administrateur</option><option value="tablette">Tablette partagée</option><option value="visibat">Visibat uniquement (autre direction)</option></select></td>
               <td><label className="case"><input type="checkbox" checked={a.actif} disabled={a.id === moi.id}
                 onChange={(e) => modifier(a, { actif: e.target.checked }, e.target.checked ? 'Compte réactivé' : 'Compte désactivé')} />{a.actif ? 'Oui' : 'Non'}</label></td>
               <td style={{ whiteSpace: 'nowrap' }}>{a.derniere_connexion ? new Date(a.derniere_connexion).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : 'Jamais'}</td>
@@ -191,12 +194,15 @@ function NouvelAgent({ fermer, cree }: { fermer: () => void; cree: (s: { nom: st
   const [nom, setNom] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('agent')
+  const [directions, setDirections] = useState<Direction[]>([])
+  const [directionId, setDirectionId] = useState('')
+  useEffect(() => { lireDirections().then((d) => { setDirections(d); setDirectionId((x) => x || d[0]?.id || '') }).catch(() => setDirections([])) }, [])
   const [enCours, setEnCours] = useState(false)
   async function valider() {
     if (!nom.trim() || !email.trim()) return signaler('Indiquez le nom et l’adresse électronique.', 'erreur')
     const mdp = motDePasseProvisoire()
     setEnCours(true)
-    const r = await executer(() => appeler({ action: 'creer', nom: nom.trim(), email: email.trim(), role, motDePasse: mdp }), 'Compte créé')
+    const r = await executer(() => appeler({ action: 'creer', nom: nom.trim(), email: email.trim(), role, motDePasse: mdp, directionId: directionId || undefined }), 'Compte créé')
     setEnCours(false)
     if (r) cree({ nom: nom.trim(), email: email.trim().toLowerCase(), mdp })
   }
@@ -207,8 +213,13 @@ function NouvelAgent({ fermer, cree }: { fermer: () => void; cree: (s: { nom: st
         <Champ libelle="Nom et prénom"><input className="champ" autoFocus value={nom} onChange={(e) => setNom(e.target.value)} /></Champ>
         <Champ libelle="Adresse électronique"><input className="champ" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@cherbourg.fr" /></Champ>
       </div>
-      <Champ libelle="Rôle"><select className="champ" value={role} onChange={(e) => setRole(e.target.value)}><option value="agent">Agent</option><option value="admin">Administrateur</option><option value="tablette">Tablette partagée</option></select></Champ>
-      <p className="note-param">{role === 'tablette'
+      <Champ libelle="Rôle"><select className="champ" value={role} onChange={(e) => setRole(e.target.value)}><option value="agent">Agent</option><option value="admin">Administrateur</option><option value="tablette">Tablette partagée</option><option value="visibat">Visibat uniquement (autre direction)</option></select></Champ>
+      {role !== 'tablette' && directions.length > 0 && (
+        <Champ libelle="Direction (Visibat)"><select className="champ" value={directionId} onChange={(e) => setDirectionId(e.target.value)}>
+          {directions.map((d) => <option key={d.id} value={d.id}>{d.sigle} — {d.nom}</option>)}</select></Champ>)}
+      <p className="note-param">{role === 'visibat'
+        ? 'Accès aux seuls chantiers Visibat (lecture et modification de tous les chantiers), sans le patrimoine, les relevés ni l’accessibilité. Un mot de passe provisoire est généré ; l’agent devra le changer à sa première connexion.'
+        : role === 'tablette'
         ? 'Compte de synchronisation d\'une tablette partagée : notez le mot de passe généré et saisissez-le une fois sur la tablette (Compte). Il n\'apparaît pas dans la liste « Qui relève ? ». Adresse au choix, par exemple tablette1.detb@cherbourg.fr : aucun courriel n\'y est envoyé.'
         : 'Un mot de passe provisoire est généré ; l\'agent devra le changer à sa première connexion.'}</p>
       <div style={{ display: 'flex', gap: 8 }}>
