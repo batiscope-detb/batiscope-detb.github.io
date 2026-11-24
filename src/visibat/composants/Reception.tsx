@@ -122,6 +122,7 @@ function DetailReception({ dossier, reception: r, recharger, urls }: { dossier: 
   const reserves = reservesDe(dossier, r.id)
   const obsReserves = dossier.reserves.filter((x) => x.reception_id === r.id)
   const lot = dossier.lots.find((l) => l.id === r.lot_id)
+  const dirOp = directions.find((x) => x.id === dossier.operation.direction_id) ?? directions[0]
   const ctx: Contexte = { dossier, reception: { ...r, donnees: d }, contacts, agents, directions, affectations }
 
   // Enregistrement différé des choix (saisie fluide, hors ligne compris).
@@ -170,11 +171,12 @@ function DetailReception({ dossier, reception: r, recharger, urls }: { dossier: 
             <label className="champ-form">N° du marché<input className="champ" defaultValue={r.numero_marche ?? ''} onBlur={(e) => e.target.value !== (r.numero_marche ?? '') && maj({ numero_marche: e.target.value || null })} /></label>
             <label className="champ-form">Objet du marché<input className="champ" defaultValue={r.objet_marche ?? ''} onBlur={(e) => e.target.value !== (r.objet_marche ?? '') && maj({ objet_marche: e.target.value || null })} /></label>
             <label className="champ-form">Code postal et commune de l’opération<input className="champ" value={String(d.lieu ?? '')} onChange={(e) => changer('lieu', e.target.value)} /></label>
-            <label className="champ-form">Maître d’œuvre (agent qui suit l’affaire)
+<label className="champ-form">Affaire suivie par (agent)
               <select className="champ" value={r.moe_agent_id ?? ''} onChange={(e) => maj({ moe_agent_id: e.target.value || null })}>
                 <option value="">—</option>
                 {agents.filter((a) => a.actif).map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
               </select></label>
+            <MaitreOeuvre r={r} directeur={dirOp?.responsable ?? null} fonction={dirOp?.responsable_fonction ?? null} agent={agents.find((a) => a.id === r.moe_agent_id)?.nom ?? null} maj={maj} />
             <label className="champ-form">Lieu de signature<input className="champ" value={String(d.lieu_signature ?? 'Cherbourg-en-Cotentin')} onChange={(e) => changer('lieu_signature', e.target.value)} /></label>
             {r.genre === 'travaux' && <label className="champ-form" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <input type="checkbox" checked={r.partielle} onChange={(e) => maj({ partielle: e.target.checked })} /> Réception partielle</label>}
@@ -233,6 +235,27 @@ function DetailReception({ dossier, reception: r, recharger, urls }: { dossier: 
 
       <FicheReserve dossier={dossier} reception={r} etat={reserve} fermer={() => setReserve(null)} recharger={recharger} urls={urls} />
     </div>
+  )
+}
+
+/** Maître d'œuvre signataire des formulaires : directeur ou directrice (par défaut), agent, ou autre personne. */
+function MaitreOeuvre({ r, directeur, fonction, agent, maj }: { r: Reception; directeur: string | null; fonction: string | null; agent: string | null; maj: (c: Partial<Reception>) => Promise<void> }) {
+  const choix = !r.moe_nom ? 'directeur' : r.moe_nom === agent ? 'agent' : 'autre'
+  const [autre, setAutre] = useState(choix === 'autre' ? r.moe_nom ?? '' : '')
+  return (
+    <label className="champ-form">Maître d’œuvre signataire
+      <select className="champ" value={choix} onChange={(e) => {
+        const v = e.target.value
+        if (v === 'directeur') void maj({ moe_nom: null })
+        else if (v === 'agent') void maj({ moe_nom: agent })
+        else { setAutre(''); void maj({ moe_nom: ' ' }) }
+      }}>
+        <option value="directeur">{directeur ? `${directeur}${fonction ? ` — ${fonction}` : ''}` : 'Directeur·rice (à renseigner dans Paramètres › Visibat)'}</option>
+        {agent && <option value="agent">{agent} (agent qui suit l’affaire)</option>}
+        <option value="autre">Autre personne…</option>
+      </select>
+      {choix === 'autre' && <input className="champ" placeholder="Prénom NOM" value={autre} onChange={(e) => setAutre(e.target.value)} onBlur={() => maj({ moe_nom: autre.trim() || ' ' })} />}
+    </label>
   )
 }
 

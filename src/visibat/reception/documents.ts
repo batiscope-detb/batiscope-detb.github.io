@@ -52,11 +52,17 @@ export function identite({ dossier, reception: r, contacts, agents, directions, 
     },
     direction: { nom: dir?.nom ?? 'Direction Études et Travaux Bâtiments', pole: dir?.pole ?? '', adresse: dir?.adresse ?? '', codePostal: dir?.code_postal ?? '' },
     agent: { nom: agent?.nom ?? r.moe_nom ?? '', tel: aff?.telephone ?? '', mail: agent?.email ?? '' },
-    moe: r.moe_nom || agent?.nom || '',
+    // Maître d'œuvre signataire : choix de la fiche marché, sinon le directeur ou la directrice, sinon l'agent.
+    moe: maitreOeuvre(r, dir, agent?.nom),
     objet: r.objet_marche || op.objet || op.nom, lieu: String(r.donnees.lieu ?? op.adresse ?? ''),
     lot: lot ? `Lot ${lot.code} – ${lot.libelle}` : '', lotCode: lot?.code ?? '', marche: r.numero_marche || lot?.marche || '',
     prestations: r.prestations ?? '', partielle: r.partielle,
   }
+}
+
+/** Nom du maître d'œuvre signataire. `moe_nom` vide : directeur ou directrice de la direction pilote. */
+export function maitreOeuvre(r: Reception, dir: Direction | undefined, agentNom?: string) {
+  return r.moe_nom?.trim() || dir?.responsable?.trim() || agentNom || ''
 }
 
 export const nomDocument = (code: CodeExe, ctx: Contexte) => {

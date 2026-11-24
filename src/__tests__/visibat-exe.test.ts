@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import JSZip from 'jszip'
 import { remplirDocx, remplirXml, normaliser } from '../visibat/reception/remplir'
+import { maitreOeuvre } from '../visibat/reception/documents'
 import { specExe, echeances, ajouterJours, type Identite, type Reserve, type CodeExe } from '../visibat/reception/exe'
 
 const id: Identite = {
@@ -50,6 +51,13 @@ describe('module réception : formulaires EXE', () => {
     const r = remplirXml(xml, { champs: { 'Raison sociale entreprise': 'ACME & Fils' } })
     expect(r.xml).toContain('<w:b/></w:rPr><w:t xml:space="preserve">ACME &amp; Fils</w:t>')
     expect(r.xml).toContain('> fin</w:t>')
+  })
+  it('maître d’œuvre signataire : directeur ou directrice par défaut', () => {
+    const r = { moe_nom: null } as unknown as Parameters<typeof maitreOeuvre>[0]
+    const dir = { responsable: 'Claire LEBRUN' } as unknown as Parameters<typeof maitreOeuvre>[1]
+    expect(maitreOeuvre(r, dir, 'Emmanuel DUVAL')).toBe('Claire LEBRUN')
+    expect(maitreOeuvre({ ...r, moe_nom: 'Emmanuel DUVAL' }, dir, 'Emmanuel DUVAL')).toBe('Emmanuel DUVAL')
+    expect(maitreOeuvre({ ...r, moe_nom: ' ' }, undefined, 'Emmanuel DUVAL')).toBe('Emmanuel DUVAL')
   })
   it('accepte les modifications suivies du modèle', () => {
     const xml = '<w:body><w:p><w:ins w:id="1" w:author="x"><w:r><w:t>gardé</w:t></w:r></w:ins><w:del w:id="2" w:author="x"><w:r><w:delText>retiré</w:delText></w:r></w:del></w:p><w:sectPr/></w:body>'

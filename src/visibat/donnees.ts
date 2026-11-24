@@ -15,7 +15,9 @@ export interface Agent { id: string; nom: string; email: string | null; role: st
 export type Statut = StatutDef & { id: string }
 export interface Groupe extends Base { nom: string; direction_id: string | null }
 /** Direction de la Ville utilisant Visibat (DETB, …) : en-tête et pied de page de ses CR. */
-export interface Direction extends Base { nom: string; sigle: string; pole: string | null; pied: string | null; ordre: number; adresse?: string | null; code_postal?: string | null }
+export interface Direction extends Base { nom: string; sigle: string; pole: string | null; pied: string | null; ordre: number; adresse?: string | null; code_postal?: string | null
+  /** Directeur ou directrice : maître d'œuvre signataire par défaut des formulaires EXE. */
+  responsable?: string | null; responsable_fonction?: string | null }
 export interface Affectation extends Base { agent_id: string; direction_id: string; telephone?: string | null }
 export interface GroupeMembre extends Base { groupe_id: string; agent_id: string }
 export interface Contact extends Base {
