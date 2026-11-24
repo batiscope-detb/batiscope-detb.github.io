@@ -9,13 +9,14 @@ import { ORDRE_CATEGORIES, TYPES_INTERVENANT, libelleType } from '../regles'
 import { useDossier } from '../useDossier'
 import FicheContact, { nomComplet } from '../composants/FicheContact'
 import Entete, { Onglets } from '../composants/Entete'
+import { ReceptionOperation } from '../composants/Reception'
 import { BoutonFichier, Champ, Dialogue, executer, signaler } from '../../composants/Ui'
 import { dateFr, dateHeureFr, depuisSaisie, versSaisie } from '../ui'
 import { GestionPlans } from '../composants/Plans'
 import { PlanningOperation } from '../composants/Planning'
 import { urlPhotoChantier, useUrls } from '../useUrls'
 
-type Onglet = 'reunions' | 'intervenants' | 'lots' | 'plans' | 'planning' | 'fiche'
+type Onglet = 'reunions' | 'intervenants' | 'lots' | 'plans' | 'planning' | 'reception' | 'fiche'
 
 export default function PageOperation() {
   const { id } = useParams()
@@ -30,12 +31,13 @@ export default function PageOperation() {
       <Entete fil={[{ lien: `/visibat/operation/${op.id}`, libelle: op.nom }]} titre={op.nom} sousTitre={[op.objet, op.adresse].filter(Boolean).join(' · ') || undefined}>
         {op.projet_id && <Link className="bouton" to={`/erp/${op.projet_id}`}>Fiche du bâtiment</Link>}
       </Entete>
-      <Onglets valeur={onglet} changer={setOnglet} choix={[['reunions', 'Réunions'], ['intervenants', 'Intervenants'], ['lots', 'Lots'], ['plans', 'Plans'], ['planning', 'Planning'], ['fiche', 'Fiche opération']]} />
+      <Onglets valeur={onglet} changer={setOnglet} choix={[['reunions', 'Réunions'], ['intervenants', 'Intervenants'], ['lots', 'Lots'], ['plans', 'Plans'], ['planning', 'Planning'], ['reception', 'Réception'], ['fiche', 'Fiche opération']]} />
       {onglet === 'reunions' && <Reunions dossier={dossier} />}
       {onglet === 'intervenants' && <Intervenants dossier={dossier} recharger={recharger} />}
       {onglet === 'lots' && <Lots dossier={dossier} recharger={recharger} />}
       {onglet === 'plans' && <GestionPlans dossier={dossier} recharger={recharger} urls={urls} />}
       {onglet === 'planning' && <PlanningOperation dossier={dossier} recharger={recharger} />}
+      {onglet === 'reception' && <ReceptionOperation dossier={dossier} recharger={recharger} urls={urls} />}
       {onglet === 'fiche' && <Fiche dossier={dossier} recharger={recharger} />}
     </main>
   )

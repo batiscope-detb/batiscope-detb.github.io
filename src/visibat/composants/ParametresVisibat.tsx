@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ModelesExe } from './ModelesExe'
 import { enregistrer, lireAffectations, lireAgents, lireDirections, lireGroupes, lireStatuts, modifier, supprimer, type Affectation, type Agent, type Direction, type Groupe, type GroupeMembre, type Statut } from '../donnees'
 import { executer } from '../../composants/Ui'
 import { EtiquetteStatut, Logo } from '../ui'
@@ -68,6 +69,17 @@ export default function ParametresVisibat({ moiId, admin }: { moiId: string; adm
         }}>Créer le groupe</button>
       </div>
 
+      <h3 style={{ margin: '8px 0 0' }}>Mes coordonnées</h3>
+      <label className="pile" style={{ gap: 2, maxWidth: 320 }}><span className="note-param">Mon téléphone (« Affaire suivie par » dans les formulaires EXE)</span>
+        <input className="champ petit" type="tel" defaultValue={affectations.find((x) => x.agent_id === moiId)?.telephone ?? ''} onBlur={(e) => {
+          const ex = affectations.find((x) => x.agent_id === moiId)
+          const v = e.target.value.trim() || null
+          if (v === (ex?.telephone ?? null)) return
+          action(() => ex ? modifier('affectation', ex.id, { telephone: v }) : enregistrer('affectation', { agent_id: moiId, direction_id: maDirection?.id, telephone: v }), 'Téléphone enregistré')
+        }} /></label>
+
+      <ModelesExe admin={admin} />
+
       <h3 style={{ margin: '8px 0 0' }}>Directions</h3>
       <p className="note-param">Chaque direction a son en-tête sur les comptes rendus. Tous les agents voient et modifient tous les chantiers, quelle que soit leur direction.
         {!admin && ' Modification réservée aux administrateurs.'}</p>
@@ -82,6 +94,10 @@ export default function ParametresVisibat({ moiId, admin }: { moiId: string; adm
               <input className="champ petit" defaultValue={d.pole ?? ''} disabled={!admin} onBlur={(e) => e.target.value !== (d.pole ?? '') && action(() => modifier('direction', d.id, { pole: e.target.value.trim() || null }), 'Direction enregistrée')} /></label>
             <label className="pile" style={{ gap: 2 }}><span className="note-param">Pied de page (adresse, téléphone…)</span>
               <input className="champ petit" defaultValue={d.pied ?? ''} disabled={!admin} onBlur={(e) => e.target.value !== (d.pied ?? '') && action(() => modifier('direction', d.id, { pied: e.target.value.trim() || null }), 'Direction enregistrée')} /></label>
+            <label className="pile" style={{ gap: 2 }}><span className="note-param">Adresse (formulaires EXE)</span>
+              <input className="champ petit" defaultValue={d.adresse ?? ''} disabled={!admin} placeholder="ex. 10 place Napoléon" onBlur={(e) => e.target.value !== (d.adresse ?? '') && action(() => modifier('direction', d.id, { adresse: e.target.value.trim() || null }), 'Direction enregistrée')} /></label>
+            <label className="pile" style={{ gap: 2 }}><span className="note-param">Code postal (formulaires EXE)</span>
+              <input className="champ petit" defaultValue={d.code_postal ?? ''} disabled={!admin} placeholder="50100" onBlur={(e) => e.target.value !== (d.code_postal ?? '') && action(() => modifier('direction', d.id, { code_postal: e.target.value.trim() || null }), 'Direction enregistrée')} /></label>
           </div>
           <span className="note-param">{affectations.filter((x) => x.direction_id === d.id).length} agent(s)</span>
         </div>))}

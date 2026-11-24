@@ -6,7 +6,7 @@ const le = '2026-11-23T10:00:00Z'
 const vide = (): Dossier => ({
   operation: { id: 'op', nom: 'Op', objet: null, adresse: null, projet_id: null, proprietaire_id: null, groupe_id: null, debut_travaux: null, objectif_reception: null, photo_path: null, penalite_absence: null, clause_diffusion: null, planning_actif: false, planning: null, archive: false, direction_id: null },
   lots: [], intervenants: [], reunions: [{ id: 'r1', operation_id: 'op', numero: 1, date_reunion: le, lieu: null, prochaine_date: null, prochaine_lieu: null, statut: 'brouillon', diffusee_le: null }],
-  presences: [], observations: [], obsLots: [], obsIntervenants: [], suivis: [], checklists: [], commentaires: [], plans: [], positions: [], photos: [], annotations: [],
+  presences: [], observations: [], obsLots: [], obsIntervenants: [], suivis: [], checklists: [], commentaires: [], plans: [], positions: [], photos: [], annotations: [], receptions: [], reserves: [],
 })
 
 describe('saisie hors ligne : superposition des écritures en attente', () => {

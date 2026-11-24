@@ -104,3 +104,25 @@ table.vb-fixe td, table.vb-fixe th { overflow: hidden; text-overflow: ellipsis; 
 .vb-horsligne.erreur { border-color: #c62828; }
 .vb-horsligne.erreur .vb-horsligne-point { background: #c62828; }
 @media print { .vb-horsligne { display: none; } }
+
+/* Module Réception (OPR / EXE) */
+.vb-rappel { padding: 10px 14px; }
+.vb-rappel summary { cursor: pointer; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.vb-rappel-etapes { margin: 10px 0; padding-left: 22px; display: grid; gap: 6px; font-size: 14px; line-height: 1.45; }
+.vb-frise { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.vb-ech { text-align: left; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--bord); background: var(--carte); font-size: 13px; }
+.vb-ech-point { grid-row: span 2; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--bord); display: grid; place-items: center; font-size: 12px; color: #fff; }
+.vb-ech-libelle { font-weight: 600; }
+.vb-ech-date { color: var(--encre-2); }
+.vb-ech.faite .vb-ech-point { background: #2e7d32; border-color: #2e7d32; }
+.vb-ech.proche { border-color: #ef6c00; } .vb-ech.proche .vb-ech-point { border-color: #ef6c00; }
+.vb-ech.retard { border-color: #c62828; background: #fdecea; } .vb-ech.retard .vb-ech-point { border-color: #c62828; } .vb-ech.retard .vb-ech-date { color: #c62828; font-weight: 600; }
+.vb-etape > summary { padding: 12px 14px; cursor: pointer; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.vb-etape-etat { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--bord); display: inline-grid; place-items: center; font-size: 12px; color: #fff; flex: none; }
+.vb-etape-etat.fait { background: #2e7d32; border-color: #2e7d32; }
+.vb-champs-exe { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 16px; align-items: end; }
+.vb-champ-large { grid-column: 1 / -1; }
+.vb-champ-case { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.vb-champ-case input { margin-top: 3px; }
+.vb-propose { color: var(--encre-2); font-style: italic; font-weight: 400; font-size: 12px; }
+tr.vb-levee td { color: var(--encre-2); text-decoration: line-through; text-decoration-color: rgba(0,0,0,.25); }

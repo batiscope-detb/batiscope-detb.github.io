@@ -4,7 +4,7 @@
  * une ligne « supprimée » reçoit une date dans supprime_le.
  */
 import { supabase } from '../donnees'
-import type { StatutDef } from './regles'
+import { comparerNumeros, type StatutDef } from './regles'
 import { ecrireOuDiffere, lireAvecCopie, lireFile, superposer } from './horsligne'
 
 export const vb = () => supabase.schema('visibat')
@@ -15,18 +15,20 @@ export interface Agent { id: string; nom: string; email: string | null; role: st
 export type Statut = StatutDef & { id: string }
 export interface Groupe extends Base { nom: string; direction_id: string | null }
 /** Direction de la Ville utilisant Visibat (DETB, …) : en-tête et pied de page de ses CR. */
-export interface Direction extends Base { nom: string; sigle: string; pole: string | null; pied: string | null; ordre: number }
-export interface Affectation extends Base { agent_id: string; direction_id: string }
+export interface Direction extends Base { nom: string; sigle: string; pole: string | null; pied: string | null; ordre: number; adresse?: string | null; code_postal?: string | null }
+export interface Affectation extends Base { agent_id: string; direction_id: string; telephone?: string | null }
 export interface GroupeMembre extends Base { groupe_id: string; agent_id: string }
 export interface Contact extends Base {
   nom: string; prenom: string | null; fonction: string | null; societe: string | null; type_intervenant: string
   telephone: string | null; mobile: string | null; email: string | null; adresse: string | null; notes: string | null
+  siret?: string | null
 }
 export interface Operation extends Base {
   nom: string; objet: string | null; adresse: string | null; projet_id: string | null; proprietaire_id: string | null
   groupe_id: string | null; debut_travaux: string | null; objectif_reception: string | null; photo_path: string | null
   penalite_absence: number | null; clause_diffusion: string | null; planning_actif: boolean; planning: unknown; archive: boolean
   direction_id: string | null
+  reception_actif?: boolean
 }
 export interface Lot extends Base { operation_id: string; code: string; libelle: string; couleur: string | null; marche: string | null; ordre: number }
 export interface Intervenant extends Base {
@@ -41,6 +43,8 @@ export interface Observation extends Base {
   operation_id: string; reunion_id: string | null; numero: string; rubrique: 'generale' | 'intervenant' | 'lot'; texte: string
   statut_code: string; date_statut: string | null; echeance: string | null; date_intervention: string | null
   a_charge_de: string | null; soldee_le: string | null; ordre: number; cree_le?: string
+  /** Réserve de réception (module OPR) : rattachée à une réception, hors des CR. */
+  reception_id?: string | null; categorie_reserve?: string | null
 }
 export interface ObservationLot extends Base { observation_id: string; lot_id: string }
 export interface ObservationIntervenant extends Base { observation_id: string; intervenant_id: string }
@@ -54,11 +58,23 @@ export interface PlanAnnotation extends Base { plan_id: string; donnees: Record<
 export interface Photo extends Base { observation_id: string; storage_path: string; legende: string | null; ordre: number }
 
 /** Tout ce qu'il faut pour travailler sur une opération. */
+/** Réception d'un marché (lot) ou admission de fournitures (FCS) : formulaires EXE. */
+export interface Reception extends Base {
+  operation_id: string; lot_id: string | null; genre: 'travaux' | 'fcs'; titulaire_contact_id: string | null
+  moe_agent_id: string | null; moe_nom: string | null; numero_marche: string | null; objet_marche: string | null
+  partielle: boolean; prestations: string | null; donnees: Record<string, string | boolean | undefined>; ordre: number
+}
+/** Modèle Word importé par un administrateur (remplace le formulaire DAJ intégré). */
+export interface ModeleExe extends Base { code: string; chemin: string; nom_fichier: string | null; cree_le?: string }
+export const lireModelesExe = () => liste<ModeleExe>('modeles-exe', 'modele_exe', () => tout(() => vb().from('modele_exe').select('*').is('supprime_le', null).order('cree_le', { ascending: false })))
+
 export interface Dossier {
   operation: Operation; lots: Lot[]; intervenants: Intervenant[]; reunions: Reunion[]; presences: Presence[]
   observations: Observation[]; obsLots: ObservationLot[]; obsIntervenants: ObservationIntervenant[]; suivis: ObservationSuivi[]
   checklists: ObservationChecklist[]; commentaires: ObservationCommentaire[]
   plans: Plan[]; positions: Position[]; photos: Photo[]; annotations: PlanAnnotation[]
+  /** Module Réception : réceptions et réserves (les réserves ne figurent pas dans `observations`). */
+  receptions: Reception[]; reserves: Observation[]
 }
 
 // --- Lecture --------------------------------------------------------------------------------
@@ -108,8 +124,9 @@ async function chargerDossierServeur(operationId: string): Promise<Dossier> {
   const { data: op, error } = await vb().from('operation').select('*').eq('id', operationId).single()
   if (error) throw new Error(error.message)
   const parOp = <T,>(table: string) => tout<T>(() => vb().from(table).select('*').eq('operation_id', operationId))
-  const [lots, intervenants, reunions, observations, plans] = await Promise.all([
+  const [lots, intervenants, reunions, observations, plans, receptions] = await Promise.all([
     parOp<Lot>('lot'), parOp<Intervenant>('intervenant'), parOp<Reunion>('reunion'), parOp<Observation>('observation'), parOp<Plan>('plan'),
+    parOp<Reception>('reception').catch(() => [] as Reception[]),
   ])
   const idsR = reunions.map((r) => r.id)
   const idsP = plans.map((p) => p.id)
@@ -132,7 +149,7 @@ async function chargerDossierServeur(operationId: string): Promise<Dossier> {
   ])
   return {
     operation: op as Operation, lots, intervenants, reunions, presences, observations, obsLots, obsIntervenants,
-    suivis, checklists, commentaires, plans, positions, photos, annotations,
+    suivis, checklists, commentaires, plans, positions, photos, annotations, receptions, reserves: [],
   }
 }
 
@@ -144,8 +161,12 @@ export function finaliserDossier(d: Dossier, file: Parameters<typeof superposer>
   const intervenants = superposer(file, 'intervenant', d.intervenants, (l) => l.operation_id === id)
   const reunions = superposer(file, 'reunion', d.reunions, (l) => l.operation_id === id)
   const plans = superposer(file, 'plan', d.plans, (l) => l.operation_id === id)
-  const observations = superposer(file, 'observation', d.observations, (l) => l.operation_id === id)
-  const R = new Set(reunions.map((x) => x.id)); const O = new Set(observations.map((x) => x.id)); const P = new Set(plans.map((x) => x.id))
+  // Observations et réserves sont dans la même table ; les copies anciennes de l'appareil n'ont pas de réserves séparées.
+  const toutes = superposer(file, 'observation', [...d.observations, ...(d.reserves ?? [])], (l) => l.operation_id === id)
+  const observations = toutes.filter((o) => !o.reception_id)
+  const reserves = toutes.filter((o) => !!o.reception_id).sort((a, b) => comparerNumeros(a.numero, b.numero))
+  const receptions = superposer(file, 'reception', d.receptions ?? [], (l) => l.operation_id === id).sort((a, b) => a.ordre - b.ordre)
+  const R = new Set(reunions.map((x) => x.id)); const O = new Set(toutes.map((x) => x.id)); const P = new Set(plans.map((x) => x.id))
   const parObs = (l: Record<string, unknown>) => O.has(l.observation_id as string)
   return {
     operation: operation ?? d.operation,
@@ -163,6 +184,7 @@ export function finaliserDossier(d: Dossier, file: Parameters<typeof superposer>
     positions: superposer(file, 'observation_position', d.positions, parObs).map((p) => ({ ...p, x: Number(p.x), y: Number(p.y) })),
     photos: superposer(file, 'observation_photo', d.photos, parObs).sort((a, b) => a.ordre - b.ordre),
     annotations: superposer(file, 'plan_annotation', d.annotations, (l) => P.has(l.plan_id as string)),
+    receptions, reserves,
   }
 }
 

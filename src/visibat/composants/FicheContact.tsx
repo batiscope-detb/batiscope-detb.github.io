@@ -4,7 +4,7 @@ import { enregistrer, supprimer, type Contact } from '../donnees'
 import { TYPES_INTERVENANT } from '../regles'
 import { Champ, Dialogue, executer } from '../../composants/Ui'
 
-const VIDE = { nom: '', prenom: '', fonction: '', societe: '', type_intervenant: 'entreprise', telephone: '', mobile: '', email: '', adresse: '', notes: '' }
+const VIDE = { nom: '', prenom: '', fonction: '', societe: '', type_intervenant: 'entreprise', telephone: '', mobile: '', email: '', adresse: '', notes: '', siret: '' }
 
 /** Création ou modification d'une fiche du carnet d'adresses. */
 export default function FicheContact({ contact, ouvert, fermer, apres, typeParDefaut }: {
@@ -46,7 +46,8 @@ export default function FicheContact({ contact, ouvert, fermer, apres, typeParDe
         <div className="grille-2">{champ('fonction', 'Fonction')}{champ('societe', 'Société / service')}</div>
         <div className="grille-2">{champ('mobile', 'Mobile', 'tel')}{champ('telephone', 'Téléphone fixe', 'tel')}</div>
         {champ('email', 'E-mail', 'email')}
-        {champ('adresse', 'Adresse')}
+        <Champ libelle="Adresse" aide="Une ligne par ligne d’adresse (reprise dans les formulaires EXE)."><textarea className="champ" rows={2} value={f.adresse} onChange={(e) => setF({ ...f, adresse: e.target.value })} /></Champ>
+        {f.type_intervenant === 'entreprise' && champ('siret', 'SIRET (formulaires EXE)')}
         <Champ libelle="Notes"><textarea className="champ" rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Champ>
       </div>
     </Dialogue>
