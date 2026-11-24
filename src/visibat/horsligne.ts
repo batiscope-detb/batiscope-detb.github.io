@@ -85,6 +85,23 @@ export async function ecrireOuDiffere<T>(e: Omit<Entree, 'le'>, direct: () => Pr
   return undefined
 }
 
+/**
+ * Insertion ou mise à jour. Une ligne existante peut être enregistrée avec seulement les champs modifiés :
+ * Postgres contrôle alors les champs obligatoires avant de constater que la ligne existe (erreur 23502) ;
+ * dans ce cas, simple mise à jour de la ligne.
+ */
+export async function upsertOuMaj(table: string, ligne: Record<string, unknown>, rendre = false): Promise<Record<string, unknown> | null> {
+  const vb = supabase.schema('visibat')
+  const r = rendre ? await vb.from(table).upsert(ligne).select().single() : await vb.from(table).upsert(ligne)
+  if (!r.error) return (r.data as Record<string, unknown> | null) ?? null
+  if (r.error.code !== '23502' || !ligne.id) throw new Error(r.error.message)
+  const { id, ...champs } = ligne
+  const m = await vb.from(table).update(champs).eq('id', id as string).select()
+  if (m.error) throw new Error(m.error.message)
+  if (!m.data?.length) throw new Error(r.error.message)
+  return m.data[0] as Record<string, unknown>
+}
+
 async function rejouer(e: Entree) {
   const vb = supabase.schema('visibat')
   if (e.genre === 'fichier') {
@@ -94,9 +111,8 @@ async function rejouer(e: Entree) {
     if (error) throw new Error(error.message)
     return
   }
-  const { error } = e.genre === 'enregistrer'
-    ? await vb.from(e.table!).upsert(e.ligne!)
-    : await vb.from(e.table!).update(e.ligne!).eq('id', e.id!)
+  if (e.genre === 'enregistrer') { await upsertOuMaj(e.table!, e.ligne!); return }
+  const { error } = await vb.from(e.table!).update(e.ligne!).eq('id', e.id!)
   if (error) throw new Error(error.message)
 }
 

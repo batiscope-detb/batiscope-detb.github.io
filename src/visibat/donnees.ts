@@ -5,7 +5,7 @@
  */
 import { supabase } from '../donnees'
 import { comparerNumeros, type StatutDef } from './regles'
-import { ecrireOuDiffere, lireAvecCopie, lireFile, superposer } from './horsligne'
+import { ecrireOuDiffere, lireAvecCopie, lireFile, superposer, upsertOuMaj } from './horsligne'
 
 export const vb = () => supabase.schema('visibat')
 
@@ -202,9 +202,7 @@ export async function chargerDossier(operationId: string): Promise<Dossier> {
 export async function enregistrer<R = Record<string, unknown>>(table: string, ligne: Record<string, unknown>): Promise<R & { id: string }> {
   const l = { ...ligne, id: (ligne.id as string | undefined) ?? crypto.randomUUID(), maj_le: new Date().toISOString() }
   const r = await ecrireOuDiffere({ genre: 'enregistrer', table, id: l.id, ligne: l }, async () => {
-    const { data, error } = await vb().from(table).upsert(l).select().single()
-    if (error) throw new Error(error.message)
-    return data as R & { id: string }
+    return (await upsertOuMaj(table, l, true)) as R & { id: string }
   })
   return r ?? (l as unknown as R & { id: string })
 }
